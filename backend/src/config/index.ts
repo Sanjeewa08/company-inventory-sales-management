@@ -1,0 +1,40 @@
+import { resolve } from "node:path";
+import dotenv from "dotenv";
+
+dotenv.config({ path: resolve(__dirname, "../../../.env") });
+
+const validNodeEnvironments = ["development", "test", "production"] as const;
+
+export interface AppConfig {
+  readonly databaseUrl: string;
+  readonly nodeEnv: (typeof validNodeEnvironments)[number];
+  readonly port: number;
+}
+
+/**
+ * Validates process environment values and returns the application configuration.
+ */
+export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
+  const rawPort = env.PORT ?? "3000";
+  const port = Number(rawPort);
+
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+    throw new Error("PORT must be an integer between 1 and 65535");
+  }
+
+  const databaseUrl = env.DATABASE_URL?.trim();
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL is required");
+  }
+
+  const nodeEnv = env.NODE_ENV ?? "development";
+  if (!validNodeEnvironments.includes(nodeEnv as AppConfig["nodeEnv"])) {
+    throw new Error("NODE_ENV must be development, test, or production");
+  }
+
+  return Object.freeze({
+    databaseUrl,
+    nodeEnv: nodeEnv as AppConfig["nodeEnv"],
+    port,
+  });
+}

@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+node_modules/
+coverage/
+backend/dist/
+backend/node_modules/
+backend/src/generated/
+npm-debug.log*
