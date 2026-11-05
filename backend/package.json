@@ -9,8 +9,8 @@
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsx watch src/server.ts",
     "lint": "eslint .",
-    "format": "prettier --write src test prisma.config.ts \"*.json\" \"*.cjs\"",
-    "format:check": "prettier --check src test prisma.config.ts \"*.json\" \"*.cjs\"",
+    "format": "prettier --write src test prisma/seed.ts prisma.config.ts \"*.json\" \"*.cjs\"",
+    "format:check": "prettier --check src test prisma/seed.ts prisma.config.ts \"*.json\" \"*.cjs\"",
     "prisma:generate": "prisma generate",
     "prisma:validate": "prisma validate",
     "start": "node dist/server.js",
@@ -18,9 +18,12 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
+    "bcryptjs": "^3.0.3",
     "dotenv": "^16.6.1",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "pg": "^8.23.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
