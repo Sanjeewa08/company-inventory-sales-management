@@ -7,7 +7,7 @@ so code quality, tests, documentation and a clean git history matter.
 
 ## How to work (READ FIRST)
 - Work ONE phase at a time. The phase list is below.
-- CURRENT PHASE: Phase 2 (update this line manually after each phase is finished and committed).
+- CURRENT PHASE: Phase 3 (update this line manually after each phase is finished and committed).
 - If I don't name a phase in my message, work on the CURRENT PHASE above. Do NOT ask me which
   phase to work on.
 - Do NOT implement anything from a later phase, even if it seems convenient.
@@ -19,7 +19,7 @@ so code quality, tests, documentation and a clean git history matter.
 1. Project setup: backend skeleton, TypeScript, Express, Prisma, ESLint/Prettier, jest,
    docker-compose with postgres only, .env.example, /health, error handler, config loader, README starter.
    (No business features, no frontend, no CI yet.) [DONE]
-2. Database schema (full Prisma schema, CHECK constraint migration, seed script)
+2. Database schema (full Prisma schema, CHECK constraint migration, seed script) [DONE]
 3. Auth + users + RBAC + audit service
 4. Branches, categories, products, stock, transfers, low-stock alerts on stock change
 5. Suppliers + purchase orders + goods receipts
