@@ -5,10 +5,14 @@ import { validateRequest } from "../../middleware/validate-request";
 import {
   cancelInvoiceController,
   createInvoiceController,
+  createInvoicePaymentController,
   getInvoiceController,
+  getInvoicePdfController,
+  listInvoicePaymentsController,
   listInvoicesController,
 } from "./invoices.controller";
 import {
+  createPaymentSchema,
   createInvoiceSchema,
   invoiceIdParamsSchema,
   listInvoicesQuerySchema,
@@ -99,6 +103,94 @@ invoicesRouter.get(
   "/",
   validateRequest({ query: listInvoicesQuerySchema }),
   listInvoicesController,
+);
+
+/**
+ * @swagger
+ * /invoices/{id}/payments:
+ *   post:
+ *     summary: Record a payment against an invoice
+ *     description: Accountants, managers, and admins may record payments; overpayment and cancelled invoices are rejected.
+ *     tags: [Invoices]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [amount, method]
+ *             properties:
+ *               amount: { type: string, description: Positive decimal amount }
+ *               method: { type: string, enum: [CASH, CARD, BANK_TRANSFER] }
+ *               reference: { type: string, nullable: true }
+ *               notes: { type: string, nullable: true }
+ *     responses:
+ *       201: { description: Recorded payment and updated invoice status }
+ *       400: { description: Invalid amount or payment exceeds balance }
+ *       401: { description: Missing or invalid token }
+ *       403: { description: Accountant, manager, or admin role required, or branch access forbidden }
+ *       404: { description: Invoice not found }
+ *       409: { description: Invoice is cancelled or already paid }
+ */
+invoicesRouter.post(
+  "/:id/payments",
+  authorize("ACCOUNTANT", "MANAGER", "ADMIN"),
+  validateRequest({
+    params: invoiceIdParamsSchema,
+    body: createPaymentSchema,
+  }),
+  createInvoicePaymentController,
+);
+
+/**
+ * @swagger
+ * /invoices/{id}/payments:
+ *   get:
+ *     summary: List payments recorded for an invoice
+ *     tags: [Invoices]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+ *     responses:
+ *       200: { description: Invoice payments in chronological order }
+ *       401: { description: Missing or invalid token }
+ *       403: { description: Role or branch access forbidden }
+ *       404: { description: Invoice not found }
+ */
+invoicesRouter.get(
+  "/:id/payments",
+  validateRequest({ params: invoiceIdParamsSchema }),
+  listInvoicePaymentsController,
+);
+
+/**
+ * @swagger
+ * /invoices/{id}/pdf:
+ *   get:
+ *     summary: Download a PDF invoice
+ *     tags: [Invoices]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+ *     responses:
+ *       200:
+ *         description: Invoice PDF document
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401: { description: Missing or invalid token }
+ *       403: { description: Role or branch access forbidden }
+ *       404: { description: Invoice not found }
+ */
+invoicesRouter.get(
+  "/:id/pdf",
+  validateRequest({ params: invoiceIdParamsSchema }),
+  getInvoicePdfController,
 );
 
 /**

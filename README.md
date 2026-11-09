@@ -1,7 +1,7 @@
 # Company Inventory & Sales Management System
 
 A multi-branch inventory, purchasing, and sales management system. Work is organized
-into incremental phases; Phases 1–5 and Phase 6 parts A and B are implemented in the backend.
+into incremental phases; Phases 1–5 and Phase 6 parts A–C are implemented in the backend.
 
 ## Prerequisites
 
@@ -47,6 +47,7 @@ creates the production JavaScript in
 - Supplier management and purchase-order workflows, including transactional numbering, approval, cancellation, and partial goods receipts
 - Customer management and quotation workflows with branch-scoped sales access and transactional quotation numbering
 - Invoice creation, branch stock deduction, cancellation/stock restoration, and low-stock alert refresh
+- Invoice payments with transactional status updates and downloadable PDF invoices
 - Prisma 7 PostgreSQL schema, initial migration, and non-negative stock constraint
 - Idempotent demo seed with branches, users, products, stock, purchase orders, and invoices
 - Jest and Supertest test setup, ESLint, and Prettier
@@ -89,12 +90,13 @@ order changes are audit-logged. The existing Phase 2 schema already provides the
 supplier, purchase-order, goods-receipt, stock-movement, and document-sequence
 tables, so Phase 5 adds no migration.
 
-## Phase 6 parts A and B API scope
+## Phase 6 parts A–C API scope
 
 - `GET/POST /customers`, `GET/PATCH/DELETE /customers/:id`
 - `POST/GET /quotations`, `GET/PATCH /quotations/:id`
 - `POST /quotations/:id/send`, `/accept`, `/expire`, and `/convert`
 - `POST/GET /invoices`, `GET /invoices/:id`, `POST /invoices/:id/cancel`
+- `POST/GET /invoices/:id/payments`, `GET /invoices/:id/pdf`
 
 Customer records are company-wide master data because the existing customer model
 has no branch field. Sales users can access only quotations for their assigned
@@ -109,7 +111,11 @@ creation atomically checks and deducts branch stock, records `SALE` movements, a
 refreshes low-stock alerts. Cancelling an unpaid invoice with no payments restores
 stock and writes `RETURN` movements in the same transaction. Sales users are
 restricted to their branch, while managers/admins can operate across branches and
-accountants have read-only invoice access. Phase 6 adds a migration for the invoice
-discount column and converted quotation status. Payments and PDF generation remain
-unimplemented.
+accountants can read invoices and record payments. Payments are transactional,
+reject overpayment and cancelled invoices, and transition invoice status from
+`PENDING` to `PARTIAL` to `PAID`. Sales users may read payments but cannot record
+them; all payment and invoice status changes are audit-logged. The invoice PDF
+includes customer and line-item details, totals, paid amount, balance, and status.
+Phase 6 adds a migration for the invoice discount column and converted quotation
+status; no additional migration is needed for payments or PDF generation.
 

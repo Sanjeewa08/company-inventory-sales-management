@@ -108,6 +108,23 @@ function invoiceRecord(
   };
 }
 
+function paymentRecord(
+  amount: string,
+  method: "CASH" | "CARD" | "BANK_TRANSFER" = "CASH",
+) {
+  return {
+    id: "07fc8101-647f-4854-92f0-8be3fd4ff39b",
+    invoiceId,
+    receivedById: actorId,
+    amount: new Prisma.Decimal(amount),
+    method,
+    reference: "PAY-001",
+    receivedAt: timestamp,
+    notes: null,
+    createdAt: timestamp,
+  };
+}
+
 function acceptedQuotation(quotationBranchId = branchId) {
   return {
     id: quotationId,
@@ -143,12 +160,12 @@ beforeEach(() => {
 });
 
 describe("invoice API", () => {
-  it("documents invoice routes without payment or PDF endpoints", () => {
+  it("documents invoice payment and PDF endpoints", () => {
     const specification = JSON.stringify(openApiSpec);
     expect(specification).toContain("/invoices");
     expect(specification).toContain("/invoices/{id}/cancel");
-    expect(specification).not.toContain("/payments");
-    expect(specification).not.toContain("/invoices/{id}/pdf");
+    expect(specification).toContain("/invoices/{id}/payments");
+    expect(specification).toContain("/invoices/{id}/pdf");
   });
 
   it("creates an invoice, deducts stock, writes SALE movement, and refreshes alerts", async () => {
@@ -499,5 +516,200 @@ describe("invoice API", () => {
       .set("Authorization", `Bearer ${token("ACCOUNTANT")}`)
       .send(manualInvoiceInput)
       .expect(403);
+  });
+
+  it("records partial and final payments and transitions invoice status", async () => {
+    setAuthenticatedUser("ACCOUNTANT");
+    invoiceMocks.findUnique
+      .mockResolvedValueOnce({ id: invoiceId, branchId, status: "PENDING" })
+      .mockResolvedValueOnce({ id: invoiceId, branchId, status: "PARTIAL" });
+    invoiceMocks.updateMany.mockResolvedValue({ count: 1 });
+    invoiceMocks.findUniqueOrThrow
+      .mockResolvedValueOnce(invoiceRecord("PENDING"))
+      .mockResolvedValueOnce(invoiceRecord("PARTIAL"));
+    paymentMocks.aggregate
+      .mockResolvedValueOnce({ _sum: { amount: null } })
+      .mockResolvedValueOnce({
+        _sum: { amount: new Prisma.Decimal("10.00") },
+      });
+    paymentMocks.create
+      .mockResolvedValueOnce(paymentRecord("10.00"))
+      .mockResolvedValueOnce(paymentRecord("14.00", "CARD"));
+    invoiceMocks.update
+      .mockResolvedValueOnce(invoiceRecord("PARTIAL"))
+      .mockResolvedValueOnce(invoiceRecord("PAID"));
+
+    await request(app)
+      .post(`/invoices/${invoiceId}/payments`)
+      .set("Authorization", `Bearer ${token("ACCOUNTANT")}`)
+      .send({ amount: "10.00", method: "CASH", reference: "PAY-001" })
+      .expect(201)
+      .expect(({ body }) => {
+        expect(body.invoice.status).toBe("PARTIAL");
+        expect(body.paidAmount).toBe("10");
+        expect(body.balance).toBe("14");
+      });
+    await request(app)
+      .post(`/invoices/${invoiceId}/payments`)
+      .set("Authorization", `Bearer ${token("ACCOUNTANT")}`)
+      .send({ amount: "14.00", method: "CARD" })
+      .expect(201)
+      .expect(({ body }) => {
+        expect(body.invoice.status).toBe("PAID");
+        expect(body.paidAmount).toBe("24");
+        expect(body.balance).toBe("0");
+      });
+
+    expect(paymentMocks.create).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        data: expect.objectContaining({
+          invoiceId,
+          receivedById: actorId,
+          amount: new Prisma.Decimal("10"),
+          method: "CASH",
+        }),
+      }),
+    );
+    expect(invoiceMocks.update).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ data: { status: "PAID" } }),
+    );
+    expect(auditMocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "CREATE",
+          entity: "Payment",
+          after: expect.any(Object),
+          ip: expect.any(String),
+        }),
+      }),
+    );
+  });
+
+  it("rejects overpayments and payments on cancelled invoices", async () => {
+    setAuthenticatedUser("MANAGER");
+    invoiceMocks.findUnique.mockResolvedValue({
+      id: invoiceId,
+      branchId,
+      status: "PENDING",
+    });
+    invoiceMocks.updateMany.mockResolvedValue({ count: 1 });
+    invoiceMocks.findUniqueOrThrow.mockResolvedValue(invoiceRecord());
+    paymentMocks.aggregate.mockResolvedValue({
+      _sum: { amount: new Prisma.Decimal("20.00") },
+    });
+
+    await request(app)
+      .post(`/invoices/${invoiceId}/payments`)
+      .set("Authorization", `Bearer ${token("MANAGER")}`)
+      .send({ amount: "5.00", method: "BANK_TRANSFER" })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.error.code).toBe("OVERPAYMENT");
+      });
+    expect(paymentMocks.create).not.toHaveBeenCalled();
+    expect(invoiceMocks.update).not.toHaveBeenCalled();
+
+    setAuthenticatedUser("MANAGER");
+    invoiceMocks.findUnique.mockResolvedValue({
+      id: invoiceId,
+      branchId,
+      status: "CANCELLED",
+    });
+    await request(app)
+      .post(`/invoices/${invoiceId}/payments`)
+      .set("Authorization", `Bearer ${token("MANAGER")}`)
+      .send({ amount: "1.00", method: "CASH" })
+      .expect(409)
+      .expect(({ body }) => {
+        expect(body.error.code).toBe("INVOICE_CANCELLED");
+      });
+    expect(paymentMocks.create).not.toHaveBeenCalled();
+  });
+
+  it("lists payments for sales users but enforces invoice branch access", async () => {
+    setAuthenticatedUser("SALES");
+    invoiceMocks.findUnique.mockResolvedValue({ id: invoiceId, branchId });
+    paymentMocks.findMany.mockResolvedValue([paymentRecord("5.00")]);
+
+    await request(app)
+      .get(`/invoices/${invoiceId}/payments`)
+      .set("Authorization", `Bearer ${token("SALES")}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.payments).toHaveLength(1);
+        expect(body.payments[0].method).toBe("CASH");
+      });
+    expect(paymentMocks.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { invoiceId },
+        orderBy: { receivedAt: "asc" },
+      }),
+    );
+
+    invoiceMocks.findUnique.mockResolvedValue({
+      id: invoiceId,
+      branchId: otherBranchId,
+    });
+    await request(app)
+      .get(`/invoices/${invoiceId}/payments`)
+      .set("Authorization", `Bearer ${token("SALES")}`)
+      .expect(403);
+
+    setAuthenticatedUser("ACCOUNTANT");
+    invoiceMocks.findUnique.mockResolvedValue({
+      id: invoiceId,
+      branchId: otherBranchId,
+      status: "PENDING",
+    });
+    await request(app)
+      .post(`/invoices/${invoiceId}/payments`)
+      .set("Authorization", `Bearer ${token("ACCOUNTANT")}`)
+      .send({ amount: "5.00", method: "CASH" })
+      .expect(403);
+    expect(paymentMocks.create).not.toHaveBeenCalled();
+  });
+
+  it("serves a generated PDF with invoice totals and payment summary", async () => {
+    setAuthenticatedUser("ACCOUNTANT");
+    invoiceMocks.findUnique.mockResolvedValue(invoiceRecord());
+    paymentMocks.aggregate.mockResolvedValue({
+      _sum: { amount: new Prisma.Decimal("10.00") },
+    });
+    await request(app)
+      .get(`/invoices/${invoiceId}/pdf`)
+      .set("Authorization", `Bearer ${token("ACCOUNTANT")}`)
+      .buffer(true)
+      .parse((response, callback) => {
+        const chunks: Buffer[] = [];
+        response.on("data", (chunk: Buffer) => chunks.push(chunk));
+        response.on("end", () => callback(null, Buffer.concat(chunks)));
+      })
+      .expect(200)
+      .expect("Content-Type", /application\/pdf/)
+      .expect("Content-Disposition", /INV-2026-0001\.pdf/)
+      .expect((response) => {
+        expect(Buffer.isBuffer(response.body)).toBe(true);
+        expect(response.body.subarray(0, 5).toString()).toBe("%PDF-");
+        expect(response.body.length).toBeGreaterThan(500);
+      });
+  });
+
+  it("rejects invalid payment input and prevents sales users from recording payments", async () => {
+    setAuthenticatedUser("SALES");
+    await request(app)
+      .post(`/invoices/${invoiceId}/payments`)
+      .set("Authorization", `Bearer ${token("SALES")}`)
+      .send({ amount: "10.00", method: "CASH" })
+      .expect(403);
+
+    setAuthenticatedUser("ACCOUNTANT");
+    await request(app)
+      .post(`/invoices/${invoiceId}/payments`)
+      .set("Authorization", `Bearer ${token("ACCOUNTANT")}`)
+      .send({ amount: "0.00", method: "OTHER" })
+      .expect(400);
+    expect(paymentMocks.create).not.toHaveBeenCalled();
   });
 });

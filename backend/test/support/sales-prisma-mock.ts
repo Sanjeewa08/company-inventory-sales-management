@@ -62,7 +62,10 @@ export const alertMocks = {
 };
 
 export const paymentMocks = {
+  findMany: queryMock([]),
   count: queryMock(0),
+  aggregate: queryMock({ _sum: { amount: null } }),
+  create: queryMock(),
 };
 
 export const auditMocks = {
@@ -138,6 +141,9 @@ export function resetSalesMocks(): void {
   alertMocks.upsert.mockResolvedValue(null);
   alertMocks.updateMany.mockResolvedValue({ count: 0 });
   paymentMocks.count.mockResolvedValue(0);
+  paymentMocks.findMany.mockResolvedValue([]);
+  paymentMocks.aggregate.mockResolvedValue({ _sum: { amount: null } });
+  paymentMocks.create.mockResolvedValue(null);
   auditMocks.create.mockResolvedValue(null);
   userMocks.findUnique.mockResolvedValue(null);
   salesPrismaMock.$transaction.mockImplementation(async (operation) => {

@@ -24,7 +24,7 @@ so code quality, tests, documentation and a clean git history matter.
 4. Branches, categories, products, stock, transfers, low-stock alerts on stock change [DONE]
 5. Suppliers + purchase orders + goods receipts [DONE]
 6. Customers + quotations + invoices + payments + PDF
-   [PARTS A + B IMPLEMENTED; PAYMENTS/PDF PENDING]
+   [ALL PARTS A–C IMPLEMENTED]
 7. Audit log endpoint, alerts cron job, reports
 8. Frontend (React)
 9. Production-ready: Dockerfiles, full docker-compose, GitHub Actions CI, security hardening,

@@ -1,3 +1,4 @@
+import PDFDocument from "pdfkit";
 import { Prisma } from "../../generated/prisma/client";
 import type { AuthenticatedUser } from "../../middleware/authenticate";
 import { withBranchScope } from "../../middleware/branch-scope";
@@ -5,7 +6,11 @@ import { prisma } from "../../prisma/client";
 import { AppError } from "../../utils/app-error";
 import { writeAuditLog } from "../audit/audit.service";
 import { refreshLowStockAlert } from "../stock/stock.service";
-import type { CreateInvoiceInput, ListInvoicesQuery } from "./invoices.schema";
+import type {
+  CreateInvoiceInput,
+  CreatePaymentInput,
+  ListInvoicesQuery,
+} from "./invoices.schema";
 
 const invoiceSelect = {
   id: true,
@@ -84,6 +89,18 @@ const invoiceQuotationSelect = {
   },
 } satisfies Prisma.QuotationSelect;
 
+const paymentSelect = {
+  id: true,
+  invoiceId: true,
+  receivedById: true,
+  amount: true,
+  method: true,
+  reference: true,
+  receivedAt: true,
+  notes: true,
+  createdAt: true,
+} satisfies Prisma.PaymentSelect;
+
 type InvoiceRecord = Prisma.InvoiceGetPayload<{
   select: typeof invoiceSelect;
 }>;
@@ -116,6 +133,10 @@ type ResolvedInvoice = {
   items: PricedInvoiceItem[];
 };
 
+type PaymentRecord = Prisma.PaymentGetPayload<{
+  select: typeof paymentSelect;
+}>;
+
 function auditInvoice(invoice: InvoiceRecord): Prisma.InputJsonObject {
   return {
     id: invoice.id,
@@ -138,6 +159,19 @@ function auditInvoice(invoice: InvoiceRecord): Prisma.InputJsonObject {
       unitPrice: item.unitPrice.toString(),
       lineTotal: item.lineTotal.toString(),
     })),
+  };
+}
+
+function auditPayment(payment: PaymentRecord): Prisma.InputJsonObject {
+  return {
+    id: payment.id,
+    invoiceId: payment.invoiceId,
+    receivedById: payment.receivedById,
+    amount: payment.amount.toString(),
+    method: payment.method,
+    reference: payment.reference,
+    receivedAt: payment.receivedAt.toISOString(),
+    notes: payment.notes,
   };
 }
 
@@ -675,4 +709,371 @@ export async function cancelInvoice(
     );
     return after;
   });
+}
+
+/** Records a payment and updates invoice status atomically. */
+export async function createInvoicePayment(
+  invoiceId: string,
+  input: CreatePaymentInput,
+  user: AuthenticatedUser,
+  ip: string | undefined,
+): Promise<{
+  payment: PaymentRecord;
+  invoice: InvoiceRecord;
+  paidAmount: string;
+  balance: string;
+}> {
+  return prisma.$transaction(async (transaction) => {
+    const current = await transaction.invoice.findUnique({
+      where: { id: invoiceId },
+      select: { id: true, branchId: true, status: true },
+    });
+    if (!current) {
+      throw new AppError(404, "INVOICE_NOT_FOUND", "Invoice not found");
+    }
+    withBranchScope(user, { branchId: current.branchId });
+    if (current.status === "CANCELLED") {
+      throw new AppError(
+        409,
+        "INVOICE_CANCELLED",
+        "Payments cannot be recorded on a cancelled invoice",
+      );
+    }
+    const paymentLock = await transaction.invoice.updateMany({
+      where: {
+        id: invoiceId,
+        status: { in: ["PENDING", "PARTIAL"] },
+      },
+      data: { updatedAt: new Date() },
+    });
+    if (paymentLock.count !== 1) {
+      throw new AppError(
+        409,
+        "INVOICE_NOT_PAYABLE",
+        "Only pending or partially paid invoices can receive payments",
+      );
+    }
+    const before = await transaction.invoice.findUniqueOrThrow({
+      where: { id: invoiceId },
+      select: invoiceSelect,
+    });
+    withBranchScope(user, { branchId: before.branchId });
+    if (before.status !== "PENDING" && before.status !== "PARTIAL") {
+      throw new AppError(
+        409,
+        "INVOICE_NOT_PAYABLE",
+        "Only pending or partially paid invoices can receive payments",
+      );
+    }
+
+    const amount = new Prisma.Decimal(input.amount);
+    if (amount.comparedTo(0) <= 0) {
+      throw new AppError(
+        400,
+        "INVALID_PAYMENT_AMOUNT",
+        "Payment amount must be greater than zero",
+      );
+    }
+    const aggregate = await transaction.payment.aggregate({
+      where: { invoiceId },
+      _sum: { amount: true },
+    });
+    const paidBefore = aggregate._sum.amount ?? new Prisma.Decimal(0);
+    const paidAfter = paidBefore.plus(amount);
+    if (paidAfter.comparedTo(before.total) > 0) {
+      throw new AppError(
+        400,
+        "OVERPAYMENT",
+        "Payment amount cannot exceed the invoice balance",
+      );
+    }
+    const status = paidAfter.equals(before.total) ? "PAID" : "PARTIAL";
+    const payment = await transaction.payment.create({
+      data: {
+        invoiceId,
+        receivedById: user.id,
+        amount,
+        method: input.method,
+        reference: input.reference ?? null,
+        notes: input.notes ?? null,
+      },
+      select: paymentSelect,
+    });
+    const after = await transaction.invoice.update({
+      where: { id: invoiceId },
+      data: { status },
+      select: invoiceSelect,
+    });
+
+    await writeAuditLog(
+      {
+        userId: user.id,
+        action: "CREATE",
+        entity: "Payment",
+        entityId: payment.id,
+        after: auditPayment(payment),
+        ip,
+      },
+      transaction,
+    );
+    if (before.status !== after.status) {
+      await writeAuditLog(
+        {
+          userId: user.id,
+          action: "UPDATE",
+          entity: "Invoice",
+          entityId: invoiceId,
+          before: auditInvoice(before),
+          after: auditInvoice(after),
+          ip,
+        },
+        transaction,
+      );
+    }
+    return {
+      payment,
+      invoice: after,
+      paidAmount: paidAfter.toString(),
+      balance: before.total.minus(paidAfter).toString(),
+    };
+  });
+}
+
+/** Lists payments after checking the caller's invoice branch access. */
+export async function listInvoicePayments(
+  invoiceId: string,
+  user: AuthenticatedUser,
+): Promise<PaymentRecord[]> {
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: invoiceId },
+    select: { id: true, branchId: true },
+  });
+  if (!invoice) {
+    throw new AppError(404, "INVOICE_NOT_FOUND", "Invoice not found");
+  }
+  withBranchScope(user, { branchId: invoice.branchId });
+  return prisma.payment.findMany({
+    where: { invoiceId },
+    select: paymentSelect,
+    orderBy: { receivedAt: "asc" },
+  });
+}
+
+function renderInvoicePdf(
+  invoice: InvoiceRecord,
+  paidAmount: Prisma.Decimal,
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const document = new PDFDocument({ size: "A4", margin: 48 });
+    const chunks: Buffer[] = [];
+    const margin = 48;
+    const tableWidth = document.page.width - margin * 2;
+    let cursorY = 250;
+
+    document.on("data", (chunk: Buffer) => chunks.push(chunk));
+    document.once("error", reject);
+    document.once("end", () => resolve(Buffer.concat(chunks)));
+    document.info.Title = `Invoice ${invoice.number}`;
+    document.info.Author = "Company Inventory & Sales Management";
+
+    document
+      .fillColor("#17365D")
+      .font("Helvetica-Bold")
+      .fontSize(20)
+      .text("COMPANY INVENTORY & SALES", margin, 48, {
+        width: tableWidth - 125,
+      });
+    document
+      .font("Helvetica")
+      .fontSize(9)
+      .fillColor("#536273")
+      .text("INVENTORY MANAGEMENT", margin, 75);
+    document
+      .font("Helvetica-Bold")
+      .fontSize(23)
+      .fillColor("#17365D")
+      .text("INVOICE", margin, 48, {
+        width: tableWidth,
+        align: "right",
+      });
+    document
+      .moveTo(margin, 103)
+      .lineTo(document.page.width - margin, 103)
+      .strokeColor("#CBD5E1")
+      .stroke();
+
+    document
+      .font("Helvetica-Bold")
+      .fontSize(10)
+      .fillColor("#17365D")
+      .text("INVOICE DETAILS", margin, 122);
+    document
+      .font("Helvetica")
+      .fontSize(10)
+      .fillColor("#1F2937")
+      .text(`Number: ${invoice.number}`, margin, 141)
+      .text(
+        `Issued: ${invoice.issuedAt.toISOString().slice(0, 10)}`,
+        margin,
+        157,
+      )
+      .text(
+        `Due: ${invoice.dueAt?.toISOString().slice(0, 10) ?? "Not specified"}`,
+        margin,
+        173,
+      )
+      .text(`Branch: ${invoice.branch.name}`, margin, 189);
+    document
+      .font("Helvetica-Bold")
+      .fontSize(10)
+      .fillColor("#17365D")
+      .text("BILL TO", margin + 270, 122);
+    document
+      .font("Helvetica-Bold")
+      .fontSize(11)
+      .fillColor("#1F2937")
+      .text(invoice.customer.name, margin + 270, 141, {
+        width: tableWidth - 270,
+      });
+    document
+      .font("Helvetica")
+      .fontSize(9)
+      .fillColor("#536273")
+      .text(invoice.customer.email ?? "", margin + 270, 159, {
+        width: tableWidth - 270,
+      })
+      .text(invoice.customer.phone ?? "", margin + 270, 174, {
+        width: tableWidth - 270,
+      });
+    document
+      .roundedRect(document.page.width - margin - 100, 203, 100, 24, 4)
+      .fill(invoice.status === "PAID" ? "#DCFCE7" : "#FEF3C7");
+    document
+      .font("Helvetica-Bold")
+      .fontSize(9)
+      .fillColor("#1F2937")
+      .text(invoice.status, document.page.width - margin - 100, 210, {
+        width: 100,
+        align: "center",
+      });
+
+    const drawTableHeader = () => {
+      document.rect(margin, cursorY, tableWidth, 24).fill("#E8EEF5");
+      document.font("Helvetica-Bold").fontSize(9).fillColor("#334155");
+      document.text("Item", margin + 8, cursorY + 7, { width: 245 });
+      document.text("Qty", margin + 270, cursorY + 7, {
+        width: 42,
+        align: "right",
+      });
+      document.text("Unit price", margin + 325, cursorY + 7, {
+        width: 75,
+        align: "right",
+      });
+      document.text("Line total", margin + 410, cursorY + 7, {
+        width: tableWidth - 418,
+        align: "right",
+      });
+      cursorY += 24;
+    };
+    drawTableHeader();
+
+    for (const item of invoice.items) {
+      if (cursorY + 24 > document.page.height - margin - 150) {
+        document.addPage();
+        cursorY = margin;
+        drawTableHeader();
+      }
+      document.font("Helvetica").fontSize(9).fillColor("#1F2937");
+      document.text(item.product.name, margin + 8, cursorY + 7, {
+        width: 245,
+        lineBreak: false,
+      });
+      document.text(String(item.quantity), margin + 270, cursorY + 7, {
+        width: 42,
+        align: "right",
+      });
+      document.text(item.unitPrice.toFixed(2), margin + 325, cursorY + 7, {
+        width: 75,
+        align: "right",
+      });
+      document.text(item.lineTotal.toFixed(2), margin + 410, cursorY + 7, {
+        width: tableWidth - 418,
+        align: "right",
+      });
+      cursorY += 24;
+      document
+        .moveTo(margin, cursorY)
+        .lineTo(document.page.width - margin, cursorY)
+        .strokeColor("#E2E8F0")
+        .stroke();
+    }
+
+    if (cursorY + 150 > document.page.height - margin) {
+      document.addPage();
+      cursorY = margin;
+    } else {
+      cursorY += 22;
+    }
+    const labelX = margin + 300;
+    const valueX = margin + 410;
+    const valueWidth = tableWidth - 410;
+    const paidBalance = invoice.total.minus(paidAmount);
+    const totals = [
+      ["Subtotal", invoice.subtotal],
+      ["Discount", invoice.discount],
+      ["Tax", invoice.tax],
+      ["Total", invoice.total],
+      ["Paid", paidAmount],
+      ["Balance", paidBalance],
+    ] as const;
+    for (const [index, [label, amount]] of totals.entries()) {
+      const rowY = cursorY + index * 19;
+      if (label === "Total") {
+        document
+          .moveTo(labelX, rowY - 5)
+          .lineTo(document.page.width - margin, rowY - 5)
+          .strokeColor("#94A3B8")
+          .stroke();
+      }
+      document
+        .font(
+          label === "Total" || label === "Balance"
+            ? "Helvetica-Bold"
+            : "Helvetica",
+        )
+        .fontSize(10)
+        .fillColor("#1F2937")
+        .text(label, labelX, rowY, { width: 95 });
+      document.text(amount.toFixed(2), valueX, rowY, {
+        width: valueWidth,
+        align: "right",
+      });
+    }
+    document
+      .font("Helvetica")
+      .fontSize(8)
+      .fillColor("#64748B")
+      .text("Thank you for your business.", margin, document.page.height - 55, {
+        width: tableWidth,
+        align: "center",
+      });
+    document.end();
+  });
+}
+
+/** Creates a PDF invoice with paid and outstanding balances. */
+export async function getInvoicePdf(
+  invoiceId: string,
+  user: AuthenticatedUser,
+): Promise<{ filename: string; buffer: Buffer }> {
+  const invoice = await getInvoice(invoiceId, user);
+  const aggregate = await prisma.payment.aggregate({
+    where: { invoiceId },
+    _sum: { amount: true },
+  });
+  const paidAmount = aggregate._sum.amount ?? new Prisma.Decimal(0);
+  return {
+    filename: `${invoice.number}.pdf`,
+    buffer: await renderInvoicePdf(invoice, paidAmount),
+  };
 }

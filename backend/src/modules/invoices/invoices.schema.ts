@@ -4,6 +4,11 @@ const moneyString = z
   .string()
   .regex(/^\d{1,10}(\.\d{1,2})?$/, "Amount must fit the database precision");
 
+const positiveMoneyString = moneyString.refine(
+  (value) => !/^0+(?:\.0+)?$/.test(value),
+  "Amount must be greater than zero",
+);
+
 const invoiceItemSchema = z.object({
   productId: z.string().uuid(),
   quantity: z.number().int().min(1).max(2_147_483_647),
@@ -49,6 +54,15 @@ export const invoiceIdParamsSchema = z.object({
   id: z.string().uuid(),
 });
 
+export const createPaymentSchema = z
+  .object({
+    amount: positiveMoneyString,
+    method: z.enum(["CASH", "CARD", "BANK_TRANSFER"]),
+    reference: z.string().trim().max(120).nullable().optional(),
+    notes: z.string().trim().max(2000).nullable().optional(),
+  })
+  .strict();
+
 export const listInvoicesQuerySchema = z
   .object({
     page: z.coerce.number().int().min(1).default(1),
@@ -75,4 +89,5 @@ export const listInvoicesQuerySchema = z
   );
 
 export type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
+export type CreatePaymentInput = z.infer<typeof createPaymentSchema>;
 export type ListInvoicesQuery = z.infer<typeof listInvoicesQuerySchema>;
