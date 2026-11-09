@@ -2,7 +2,7 @@
 
 A multi-branch inventory, purchasing, and sales management system. Work is organized
 into incremental phases; Phases 1–6 and Phase 7 parts A–B are implemented in the backend.
-Phase 8 part A provides the frontend foundation; business pages remain planned.
+Phase 8 parts A–B provide the frontend foundation and live dashboard; business pages remain planned.
 
 ## Prerequisites
 
@@ -53,7 +53,7 @@ The API allows browser requests from `http://localhost:5173` by default; configu
 - Invoice payments with transactional status updates and downloadable PDF invoices
 - Admin audit-log browsing, low-stock alert management, and scheduled alert reconciliation
 - Read-only sales, stock-valuation, top-product, branch-comparison, and outstanding-payment reports
-- React frontend foundation with JWT login, protected role navigation, reusable UI components, and a responsive dashboard preview
+- React frontend with JWT login, protected role navigation, reusable UI components, and role-aware live dashboard metrics
 - Prisma 7 PostgreSQL schema, initial migration, and non-negative stock constraint
 - Idempotent demo seed with branches, users, products, stock, purchase orders, and invoices
 - Jest and Supertest test setup, ESLint, and Prettier
@@ -146,7 +146,7 @@ access every report; accountants can access sales, stock valuation, and outstand
 payments. No reports are available to other roles. Phase 7 parts A and B add no
 database migration.
 
-## Frontend setup (Phase 8 part A)
+## Frontend setup (Phase 8 parts A and B)
 
 From the project root, configure the frontend API URL and start Vite:
 
@@ -161,7 +161,7 @@ The frontend defaults to `http://localhost:3000` for its API base URL; override 
 with `VITE_API_BASE_URL` in `frontend/.env.local` when needed. The login uses the
 implemented `POST /auth/login` and session restore uses `GET /auth/me`. Sign out
 clears the client token because the backend has no logout endpoint. Role-specific
-navigation and dashboard are in place; business module pages remain placeholders.
+navigation and a live dashboard are in place; business module pages remain placeholders.
 Run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` from
 `frontend/` to verify the app.
 

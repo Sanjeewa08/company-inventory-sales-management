@@ -4,6 +4,11 @@ The frontend foundation uses React, Vite, TypeScript, Tailwind CSS, React Router
 Axios, Recharts, React Hook Form, and Zod. Business module pages are not included
 in this increment.
 
+The dashboard loads live product and low-stock counts for authenticated users,
+sales and stock-valuation reports for ADMIN/MANAGER/ACCOUNTANT, branch-scoped
+invoices for SALES and finance/management roles, and branch-scoped stock counts
+for STOREKEEPER. Other business pages remain placeholders.
+
 ## Local setup
 
 ```powershell
