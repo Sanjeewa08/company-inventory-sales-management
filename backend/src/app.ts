@@ -5,7 +5,9 @@ import { branchesRouter } from "./modules/branches/branches.routes";
 import { categoriesRouter } from "./modules/categories/categories.routes";
 import { authRouter } from "./modules/auth/auth.routes";
 import { productsRouter } from "./modules/products/products.routes";
+import { purchaseOrdersRouter } from "./modules/purchase-orders/purchase-orders.routes";
 import { stockRouter } from "./modules/stock/stock.routes";
+import { suppliersRouter } from "./modules/suppliers/suppliers.routes";
 import { usersRouter } from "./modules/users/users.routes";
 import { healthRouter } from "./modules/health/health.routes";
 import { openApiSpec } from "./swagger";
@@ -21,6 +23,8 @@ app.use("/branches", branchesRouter);
 app.use("/categories", categoriesRouter);
 app.use("/products", productsRouter);
 app.use("/stock", stockRouter);
+app.use("/suppliers", suppliersRouter);
+app.use("/purchase-orders", purchaseOrdersRouter);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openApiSpec));
 app.use((_request, _response, next) => {
   next(new AppError(404, "NOT_FOUND", "Route not found"));

@@ -1,7 +1,7 @@
 # Company Inventory & Sales Management System
 
 A multi-branch inventory, purchasing, and sales management system. Work is organized
-into incremental phases; Phases 1–4 are implemented in the backend.
+into incremental phases; Phases 1–4 and Phase 5 part A are implemented in the backend.
 
 ## Prerequisites
 
@@ -44,6 +44,7 @@ creates the production JavaScript in
 - JWT authentication, role-based user management, branch scoping, audit logging, and Swagger API docs
 - Branch, category, product, and stock APIs with role-based access and pagination
 - Atomic stock adjustments and inter-branch transfers with movement history and low-stock alert refresh
+- Supplier management and draft purchase-order workflows with transactional PO numbering and approval/cancellation
 - Prisma 7 PostgreSQL schema, initial migration, and non-negative stock constraint
 - Idempotent demo seed with branches, users, products, stock, purchase orders, and invoices
 - Jest and Supertest test setup, ESLint, and Prettier
@@ -66,4 +67,19 @@ and transfer sources are likewise restricted. Stock operations create movements
 and refresh or resolve the corresponding low-stock alert within the same
 transaction. The existing Phase 2 schema supports these features, so Phase 4 adds
 no migration. Frontend components remain planned for Phase 8.
+
+## Phase 5 part A API scope
+
+- `GET/POST /suppliers`, `GET/PATCH/DELETE /suppliers/:id`
+- `POST/GET /purchase-orders`, `GET/PATCH /purchase-orders/:id`
+- `POST /purchase-orders/:id/approve` (admin or manager) and
+  `POST /purchase-orders/:id/cancel`
+
+Purchase-order creation computes line totals and tax using decimal arithmetic and
+allocates `PO-YYYY-NNNN` numbers through `DocumentSequence` in the same transaction.
+Updates are limited to draft orders. Storekeepers may work with draft orders for
+their own branch; managers and admins can approve and cancel approved orders.
+The existing Phase 2 schema already provides the supplier, purchase-order, item,
+and document-sequence tables, so Phase 5 part A adds no migration. Goods receipts
+are intentionally not implemented in this phase part.
 
