@@ -1,7 +1,7 @@
 # Company Inventory & Sales Management System
 
 A multi-branch inventory, purchasing, and sales management system. Work is organized
-into incremental phases; Phases 1–5 are implemented in the backend.
+into incremental phases; Phases 1–5 and Phase 6 part A are implemented in the backend.
 
 ## Prerequisites
 
@@ -45,6 +45,7 @@ creates the production JavaScript in
 - Branch, category, product, and stock APIs with role-based access and pagination
 - Atomic stock adjustments and inter-branch transfers with movement history and low-stock alert refresh
 - Supplier management and purchase-order workflows, including transactional numbering, approval, cancellation, and partial goods receipts
+- Customer management and quotation workflows with branch-scoped sales access and transactional quotation numbering
 - Prisma 7 PostgreSQL schema, initial migration, and non-negative stock constraint
 - Idempotent demo seed with branches, users, products, stock, purchase orders, and invoices
 - Jest and Supertest test setup, ESLint, and Prettier
@@ -86,4 +87,21 @@ branch stock, purchase stock movements, and low-stock alerts. Receipt and purcha
 order changes are audit-logged. The existing Phase 2 schema already provides the
 supplier, purchase-order, goods-receipt, stock-movement, and document-sequence
 tables, so Phase 5 adds no migration.
+
+## Phase 6 part A API scope
+
+- `GET/POST /customers`, `GET/PATCH/DELETE /customers/:id`
+- `POST/GET /quotations`, `GET/PATCH /quotations/:id`
+- `POST /quotations/:id/send`, `/accept`, `/expire`, and `/convert`
+
+Customer records are company-wide master data because the existing customer model
+has no branch field. Sales users can access only quotations for their assigned
+branch; managers and admins can access any branch. Quotation creation uses decimal
+totals and transaction-safe `QT-YYYY-NNNN` numbering. Only draft quotations can be
+edited; sending, accepting, and expiring are audited state transitions. Conversion
+of an accepted quotation returns invoice-ready data only: it does not create an
+invoice or deduct stock. The existing Phase 2 schema already includes customers,
+quotations, quotation items, and document sequences, so Phase 6 part A adds no
+migration. Invoice creation, payments, stock deduction, and PDF generation remain
+unimplemented.
 
