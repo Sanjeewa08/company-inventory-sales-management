@@ -33,7 +33,7 @@ quotationsRouter.use(authenticate, authorize("SALES", "MANAGER", "ADMIN"));
  *       - { in: query, name: page, schema: { type: integer, minimum: 1 } }
  *       - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 100 } }
  *       - { in: query, name: search, schema: { type: string, description: Match quotation number, customer name, or email } }
- *       - { in: query, name: status, schema: { type: string, enum: [DRAFT, SENT, ACCEPTED, EXPIRED, REJECTED] } }
+ *       - { in: query, name: status, schema: { type: string, enum: [DRAFT, SENT, ACCEPTED, CONVERTED, EXPIRED, REJECTED] } }
  *       - { in: query, name: customerId, schema: { type: string, format: uuid } }
  *       - { in: query, name: branchId, schema: { type: string, format: uuid } }
  *       - { in: query, name: sortBy, schema: { type: string, enum: [number, issuedAt, createdAt, total] } }

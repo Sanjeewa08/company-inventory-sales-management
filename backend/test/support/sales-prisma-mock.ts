@@ -35,6 +35,36 @@ export const quotationMocks = {
   updateMany: queryMock({ count: 0 }),
 };
 
+export const invoiceMocks = {
+  findMany: queryMock([]),
+  findUnique: queryMock(),
+  findUniqueOrThrow: queryMock(),
+  count: queryMock(0),
+  create: queryMock(),
+  update: queryMock(),
+  updateMany: queryMock({ count: 0 }),
+};
+
+export const stockMocks = {
+  findMany: queryMock([]),
+  findUniqueOrThrow: queryMock(),
+  updateMany: queryMock({ count: 0 }),
+  upsert: queryMock(),
+};
+
+export const stockMovementMocks = {
+  create: queryMock(),
+};
+
+export const alertMocks = {
+  upsert: queryMock(),
+  updateMany: queryMock(),
+};
+
+export const paymentMocks = {
+  count: queryMock(0),
+};
+
 export const auditMocks = {
   create: queryMock(),
 };
@@ -49,6 +79,11 @@ export const salesPrismaMock = {
   product: productMocks,
   documentSequence: documentSequenceMocks,
   quotation: quotationMocks,
+  invoice: invoiceMocks,
+  stock: stockMocks,
+  stockMovement: stockMovementMocks,
+  alert: alertMocks,
+  payment: paymentMocks,
   auditLog: auditMocks,
   user: userMocks,
   $transaction: queryMock(),
@@ -60,6 +95,11 @@ const allMocks: QueryMock[] = [
   ...Object.values(productMocks),
   ...Object.values(documentSequenceMocks),
   ...Object.values(quotationMocks),
+  ...Object.values(invoiceMocks),
+  ...Object.values(stockMocks),
+  ...Object.values(stockMovementMocks),
+  ...Object.values(alertMocks),
+  ...Object.values(paymentMocks),
   ...Object.values(auditMocks),
   ...Object.values(userMocks),
   salesPrismaMock.$transaction,
@@ -83,6 +123,21 @@ export function resetSalesMocks(): void {
   quotationMocks.create.mockResolvedValue(null);
   quotationMocks.update.mockResolvedValue(null);
   quotationMocks.updateMany.mockResolvedValue({ count: 0 });
+  invoiceMocks.findMany.mockResolvedValue([]);
+  invoiceMocks.findUnique.mockResolvedValue(null);
+  invoiceMocks.findUniqueOrThrow.mockResolvedValue(null);
+  invoiceMocks.count.mockResolvedValue(0);
+  invoiceMocks.create.mockResolvedValue(null);
+  invoiceMocks.update.mockResolvedValue(null);
+  invoiceMocks.updateMany.mockResolvedValue({ count: 0 });
+  stockMocks.findMany.mockResolvedValue([]);
+  stockMocks.findUniqueOrThrow.mockResolvedValue(null);
+  stockMocks.updateMany.mockResolvedValue({ count: 0 });
+  stockMocks.upsert.mockResolvedValue(null);
+  stockMovementMocks.create.mockResolvedValue(null);
+  alertMocks.upsert.mockResolvedValue(null);
+  alertMocks.updateMany.mockResolvedValue({ count: 0 });
+  paymentMocks.count.mockResolvedValue(0);
   auditMocks.create.mockResolvedValue(null);
   userMocks.findUnique.mockResolvedValue(null);
   salesPrismaMock.$transaction.mockImplementation(async (operation) => {

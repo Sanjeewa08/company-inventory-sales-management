@@ -83,7 +83,13 @@ function customer(
 }
 
 function quotation(
-  status: "DRAFT" | "SENT" | "ACCEPTED" | "EXPIRED" | "REJECTED" = "DRAFT",
+  status:
+    | "DRAFT"
+    | "SENT"
+    | "ACCEPTED"
+    | "CONVERTED"
+    | "EXPIRED"
+    | "REJECTED" = "DRAFT",
   quotationBranchId = branchId,
   quotationValidUntil: Date | null = validUntil,
 ) {
@@ -137,7 +143,7 @@ describe("customer management", () => {
     expect(specification).toContain("/customers");
     expect(specification).toContain("/quotations/{id}/send");
     expect(specification).toContain("/quotations/{id}/convert");
-    expect(specification).not.toContain("/invoices");
+    expect(specification).toContain("/invoices/{id}/cancel");
   });
 
   it("searches customers with pagination and sorting", async () => {

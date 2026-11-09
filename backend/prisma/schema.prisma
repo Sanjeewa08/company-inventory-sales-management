@@ -36,6 +36,7 @@ enum QuotationStatus {
   DRAFT
   SENT
   ACCEPTED
+  CONVERTED
   EXPIRED
   REJECTED
 }
@@ -361,6 +362,7 @@ model Invoice {
   dueAt       DateTime?
   notes       String?
   subtotal    Decimal       @db.Decimal(12, 2)
+  discount    Decimal       @default(0) @db.Decimal(12, 2)
   tax         Decimal       @default(0) @db.Decimal(12, 2)
   total       Decimal       @db.Decimal(12, 2)
   createdAt   DateTime      @default(now())

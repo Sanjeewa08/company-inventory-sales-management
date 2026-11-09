@@ -53,7 +53,7 @@ export const listQuotationsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   search: z.string().trim().min(1).optional(),
   status: z
-    .enum(["DRAFT", "SENT", "ACCEPTED", "EXPIRED", "REJECTED"])
+    .enum(["DRAFT", "SENT", "ACCEPTED", "CONVERTED", "EXPIRED", "REJECTED"])
     .optional(),
   customerId: z.string().uuid().optional(),
   branchId: z.string().uuid().optional(),

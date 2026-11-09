@@ -1,7 +1,7 @@
 # Company Inventory & Sales Management System
 
 A multi-branch inventory, purchasing, and sales management system. Work is organized
-into incremental phases; Phases 1–5 and Phase 6 part A are implemented in the backend.
+into incremental phases; Phases 1–5 and Phase 6 parts A and B are implemented in the backend.
 
 ## Prerequisites
 
@@ -46,6 +46,7 @@ creates the production JavaScript in
 - Atomic stock adjustments and inter-branch transfers with movement history and low-stock alert refresh
 - Supplier management and purchase-order workflows, including transactional numbering, approval, cancellation, and partial goods receipts
 - Customer management and quotation workflows with branch-scoped sales access and transactional quotation numbering
+- Invoice creation, branch stock deduction, cancellation/stock restoration, and low-stock alert refresh
 - Prisma 7 PostgreSQL schema, initial migration, and non-negative stock constraint
 - Idempotent demo seed with branches, users, products, stock, purchase orders, and invoices
 - Jest and Supertest test setup, ESLint, and Prettier
@@ -88,20 +89,27 @@ order changes are audit-logged. The existing Phase 2 schema already provides the
 supplier, purchase-order, goods-receipt, stock-movement, and document-sequence
 tables, so Phase 5 adds no migration.
 
-## Phase 6 part A API scope
+## Phase 6 parts A and B API scope
 
 - `GET/POST /customers`, `GET/PATCH/DELETE /customers/:id`
 - `POST/GET /quotations`, `GET/PATCH /quotations/:id`
 - `POST /quotations/:id/send`, `/accept`, `/expire`, and `/convert`
+- `POST/GET /invoices`, `GET /invoices/:id`, `POST /invoices/:id/cancel`
 
 Customer records are company-wide master data because the existing customer model
 has no branch field. Sales users can access only quotations for their assigned
 branch; managers and admins can access any branch. Quotation creation uses decimal
 totals and transaction-safe `QT-YYYY-NNNN` numbering. Only draft quotations can be
-edited; sending, accepting, and expiring are audited state transitions. Conversion
-of an accepted quotation returns invoice-ready data only: it does not create an
-invoice or deduct stock. The existing Phase 2 schema already includes customers,
-quotations, quotation items, and document sequences, so Phase 6 part A adds no
-migration. Invoice creation, payments, stock deduction, and PDF generation remain
+edited; sending, accepting, and expiring are audited state transitions.
+`POST /quotations/:id/convert` returns invoice-ready data only; it does not create
+an invoice or deduct stock. Posting `POST /invoices` with an accepted `quotationId`
+creates the linked invoice and marks the quotation converted.
+Invoice amounts use Decimal arithmetic with fixed-amount discounts. Invoice
+creation atomically checks and deducts branch stock, records `SALE` movements, and
+refreshes low-stock alerts. Cancelling an unpaid invoice with no payments restores
+stock and writes `RETURN` movements in the same transaction. Sales users are
+restricted to their branch, while managers/admins can operate across branches and
+accountants have read-only invoice access. Phase 6 adds a migration for the invoice
+discount column and converted quotation status. Payments and PDF generation remain
 unimplemented.
 
