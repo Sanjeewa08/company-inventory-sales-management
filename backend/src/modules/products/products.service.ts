@@ -11,6 +11,7 @@ import type {
 const productSelect = {
   id: true,
   sku: true,
+  barcode: true,
   name: true,
   description: true,
   unit: true,
@@ -27,6 +28,7 @@ function auditProduct(product: Product): Prisma.InputJsonObject {
   return {
     id: product.id,
     sku: product.sku,
+    barcode: product.barcode,
     name: product.name,
     description: product.description,
     unit: product.unit,
@@ -43,6 +45,17 @@ function auditProduct(product: Product): Prisma.InputJsonObject {
 function throwDatabaseError(error: unknown): never {
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
     if (error.code === "P2002") {
+      const target = error.meta?.target;
+      if (
+        (Array.isArray(target) && target.includes("barcode")) ||
+        (typeof target === "string" && target.includes("barcode"))
+      ) {
+        throw new AppError(
+          409,
+          "PRODUCT_BARCODE_IN_USE",
+          "Product barcode already exists",
+        );
+      }
       throw new AppError(
         409,
         "PRODUCT_SKU_IN_USE",
@@ -66,6 +79,9 @@ export async function listProducts(
       ? { name: { contains: query.name, mode: "insensitive" } }
       : {}),
     ...(query.sku ? { sku: { contains: query.sku, mode: "insensitive" } } : {}),
+    ...(query.barcode
+      ? { barcode: { contains: query.barcode, mode: "insensitive" } }
+      : {}),
     ...(query.categoryId ? { categoryId: query.categoryId } : {}),
   };
   const [products, total] = await prisma.$transaction([

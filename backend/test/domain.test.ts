@@ -165,6 +165,7 @@ describe("branch, catalog, and stock APIs", () => {
     const product = {
       id: productId,
       sku: "ELE-001",
+      barcode: "0123456789012",
       name: "USB-C Charger",
       description: null,
       unit: "unit",
@@ -184,6 +185,7 @@ describe("branch, catalog, and stock APIs", () => {
       .set("Authorization", `Bearer ${token("MANAGER")}`)
       .send({
         sku: product.sku,
+        barcode: product.barcode,
         name: product.name,
         categoryId: category.id,
         costPrice: "1250.00",
@@ -198,6 +200,28 @@ describe("branch, catalog, and stock APIs", () => {
     expect(auditMocks.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ entity: "Product" }),
+      }),
+    );
+  });
+
+  it("filters products by barcode", async () => {
+    setAuthenticatedUser("SALES");
+    productMocks.findMany.mockResolvedValue([]);
+    productMocks.count.mockResolvedValue(0);
+
+    await request(app)
+      .get("/products?barcode=0123456789012")
+      .set("Authorization", `Bearer ${token("SALES")}`)
+      .expect(200);
+
+    expect(productMocks.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          barcode: {
+            contains: "0123456789012",
+            mode: "insensitive",
+          },
+        }),
       }),
     );
   });

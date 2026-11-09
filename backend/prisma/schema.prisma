@@ -137,6 +137,7 @@ model Category {
 model Product {
   id             String              @id @default(uuid()) @db.Uuid
   sku            String              @unique
+  barcode        String?             @unique
   name           String
   description    String?
   unit           String              @default("unit")

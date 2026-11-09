@@ -30,6 +30,7 @@ productsRouter.use(authenticate);
  *       - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 100 } }
  *       - { in: query, name: name, schema: { type: string } }
  *       - { in: query, name: sku, schema: { type: string } }
+ *       - { in: query, name: barcode, schema: { type: string } }
  *       - { in: query, name: categoryId, schema: { type: string, format: uuid } }
  *       - { in: query, name: isActive, schema: { type: boolean } }
  *       - { in: query, name: sortBy, schema: { type: string, enum: [name, sku, createdAt] } }
@@ -60,6 +61,7 @@ productsRouter.get(
  *             required: [sku, name, categoryId, costPrice, sellingPrice]
  *             properties:
  *               sku: { type: string }
+ *               barcode: { type: string, nullable: true }
  *               name: { type: string }
  *               description: { type: string, nullable: true }
  *               unit: { type: string }
@@ -97,6 +99,7 @@ productsRouter.post(
  *             type: object
  *             properties:
  *               sku: { type: string }
+ *               barcode: { type: string, nullable: true }
  *               name: { type: string }
  *               description: { type: string, nullable: true }
  *               unit: { type: string }

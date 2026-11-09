@@ -5,7 +5,9 @@ import { ProtectedRoute } from "./features/auth/ProtectedRoute";
 import { AppShell } from "./layouts/AppShell";
 import { DashboardPage } from "./pages/DashboardPage";
 import { LoginPage } from "./pages/LoginPage";
+import { CategoriesPage } from "./pages/CategoriesPage";
 import { ModulePlaceholderPage } from "./pages/ModulePlaceholderPage";
+import { ProductsPage } from "./pages/ProductsPage";
 
 function ApplicationRoutes() {
   return (
@@ -14,6 +16,8 @@ function ApplicationRoutes() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route index element={<DashboardPage />} />
+          <Route path="products" element={<ProductsPage />} />
+          <Route path="categories" element={<CategoriesPage />} />
           <Route path=":section" element={<ModulePlaceholderPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

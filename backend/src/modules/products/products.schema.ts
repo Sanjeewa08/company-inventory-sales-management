@@ -16,6 +16,7 @@ export const productIdParamsSchema = z.object({
 
 export const createProductSchema = z.object({
   sku: z.string().trim().min(1).max(80),
+  barcode: z.string().trim().min(1).max(128).nullable().optional(),
   name: z.string().trim().min(1).max(160),
   description: z.string().trim().max(2000).nullable().optional(),
   unit: z.string().trim().min(1).max(40).optional(),
@@ -37,6 +38,7 @@ export const listProductsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   name: z.string().trim().min(1).optional(),
   sku: z.string().trim().min(1).optional(),
+  barcode: z.string().trim().min(1).optional(),
   categoryId: z.string().uuid().optional(),
   isActive: optionalBoolean.default(true),
   sortBy: z.enum(["name", "sku", "createdAt"]).default("name"),

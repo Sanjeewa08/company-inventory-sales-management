@@ -1,13 +1,15 @@
 # Meridian frontend
 
-The frontend foundation uses React, Vite, TypeScript, Tailwind CSS, React Router,
-Axios, Recharts, React Hook Form, and Zod. Business module pages are not included
-in this increment.
+The frontend uses React, Vite, TypeScript, Tailwind CSS, React Router, Axios,
+Recharts, React Hook Form, and Zod. It includes a live dashboard and product/category
+catalog management pages.
 
 The dashboard loads live product and low-stock counts for authenticated users,
 sales and stock-valuation reports for ADMIN/MANAGER/ACCOUNTANT, branch-scoped
 invoices for SALES and finance/management roles, and branch-scoped stock counts
-for STOREKEEPER. Other business pages remain placeholders.
+for STOREKEEPER. Products and categories support search, status/category filtering,
+pagination, details and forms; create, edit, activate and deactivate actions are
+available only to ADMIN and MANAGER. Other business pages remain placeholders.
 
 ## Local setup
 

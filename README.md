@@ -2,7 +2,7 @@
 
 A multi-branch inventory, purchasing, and sales management system. Work is organized
 into incremental phases; Phases 1–6 and Phase 7 parts A–B are implemented in the backend.
-Phase 8 parts A–B provide the frontend foundation and live dashboard; business pages remain planned.
+Phase 8 parts A–C provide the frontend foundation, live dashboard, and product/category management.
 
 ## Prerequisites
 
@@ -54,6 +54,7 @@ The API allows browser requests from `http://localhost:5173` by default; configu
 - Admin audit-log browsing, low-stock alert management, and scheduled alert reconciliation
 - Read-only sales, stock-valuation, top-product, branch-comparison, and outstanding-payment reports
 - React frontend with JWT login, protected role navigation, reusable UI components, and role-aware live dashboard metrics
+- Product and category management pages with search, filtering, pagination, forms, and role-gated mutations
 - Prisma 7 PostgreSQL schema, initial migration, and non-negative stock constraint
 - Idempotent demo seed with branches, users, products, stock, purchase orders, and invoices
 - Jest and Supertest test setup, ESLint, and Prettier
@@ -160,8 +161,11 @@ npm run dev
 The frontend defaults to `http://localhost:3000` for its API base URL; override it
 with `VITE_API_BASE_URL` in `frontend/.env.local` when needed. The login uses the
 implemented `POST /auth/login` and session restore uses `GET /auth/me`. Sign out
-clears the client token because the backend has no logout endpoint. Role-specific
-navigation and a live dashboard are in place; business module pages remain placeholders.
+clears the client token because the backend has no logout endpoint. Role-specific navigation and a live dashboard are in place. Products and categories are
+available to all authenticated roles for reading; product and category writes are limited
+to ADMIN and MANAGER. Other business module pages remain placeholders.
+Phase 8C adds an optional unique product barcode for catalog search; apply its additive
+database migration with `npx prisma migrate dev` from `backend/`.
 Run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` from
 `frontend/` to verify the app.
 
