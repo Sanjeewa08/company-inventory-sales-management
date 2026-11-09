@@ -7,7 +7,7 @@ so code quality, tests, documentation and a clean git history matter.
 
 ## How to work (READ FIRST)
 - Work ONE phase at a time. The phase list is below.
-- CURRENT PHASE: Phase 4 (implementation complete; update after commit).
+- CURRENT PHASE: Phase 5 (update this line manually after each phase is finished and committed).
 - If I don't name a phase in my message, work on the CURRENT PHASE above. Do NOT ask me which
   phase to work on.
 - Do NOT implement anything from a later phase, even if it seems convenient.
@@ -21,8 +21,7 @@ so code quality, tests, documentation and a clean git history matter.
    (No business features, no frontend, no CI yet.) [DONE]
 2. Database schema (full Prisma schema, CHECK constraint migration, seed script) [DONE]
 3. Auth + users + RBAC + audit service [DONE]
-4. Branches, categories, products, stock, transfers, low-stock alerts on stock change
-   [DONE IN WORKING TREE; COMMIT PENDING]
+4. Branches, categories, products, stock, transfers, low-stock alerts on stock change [DONE]
 5. Suppliers + purchase orders + goods receipts
 6. Customers + quotations + invoices + payments + PDF
 7. Audit log endpoint, alerts cron job, reports
