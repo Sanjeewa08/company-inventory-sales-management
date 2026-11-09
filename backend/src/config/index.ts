@@ -7,6 +7,7 @@ const validNodeEnvironments = ["development", "test", "production"] as const;
 
 export interface AppConfig {
   readonly databaseUrl: string;
+  readonly jwtSecret: string;
   readonly nodeEnv: (typeof validNodeEnvironments)[number];
   readonly port: number;
 }
@@ -27,6 +28,11 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     throw new Error("DATABASE_URL is required");
   }
 
+  const jwtSecret = env.JWT_SECRET?.trim();
+  if (!jwtSecret || jwtSecret.length < 32) {
+    throw new Error("JWT_SECRET must be at least 32 characters long");
+  }
+
   const nodeEnv = env.NODE_ENV ?? "development";
   if (!validNodeEnvironments.includes(nodeEnv as AppConfig["nodeEnv"])) {
     throw new Error("NODE_ENV must be development, test, or production");
@@ -34,6 +40,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
 
   return Object.freeze({
     databaseUrl,
+    jwtSecret,
     nodeEnv: nodeEnv as AppConfig["nodeEnv"],
     port,
   });

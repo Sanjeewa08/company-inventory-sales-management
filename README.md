@@ -1,8 +1,7 @@
 # Company Inventory & Sales Management System
 
 A multi-branch inventory, purchasing, and sales management system. Work is organized
-into incremental phases; Phase 1 (project setup) and Phase 2 (database schema) are
-included in this starter.
+into incremental phases; Phases 1–4 are implemented in the backend.
 
 ## Prerequisites
 
@@ -32,7 +31,9 @@ npm run dev
 ```
 
 The API listens on `http://localhost:3000` by default. Check `GET /health` for the
-service health response. `npm run build` creates the production JavaScript in
+service health response and browse the API reference at `GET /api-docs`. Set
+`JWT_SECRET` to a random secret of at least 32 characters in `.env`. `npm run build`
+creates the production JavaScript in
 `backend/dist`; run it with `npm start`.
 
 ## Included
@@ -40,6 +41,9 @@ service health response. `npm run build` creates the production JavaScript in
 - Express and strict TypeScript backend skeleton
 - Environment configuration loader
 - Health endpoint and consistent global error handling
+- JWT authentication, role-based user management, branch scoping, audit logging, and Swagger API docs
+- Branch, category, product, and stock APIs with role-based access and pagination
+- Atomic stock adjustments and inter-branch transfers with movement history and low-stock alert refresh
 - Prisma 7 PostgreSQL schema, initial migration, and non-negative stock constraint
 - Idempotent demo seed with branches, users, products, stock, purchase orders, and invoices
 - Jest and Supertest test setup, ESLint, and Prettier
@@ -48,4 +52,18 @@ service health response. `npm run build` creates the production JavaScript in
 The demo users all use the password `Demo@1234`; their email addresses are
 `admin@inventory.local`, `manager@inventory.local`, `storekeeper@inventory.local`,
 `sales@inventory.local`, and `accountant@inventory.local`.
+
+## Phase 4 API scope
+
+- `GET/POST /branches`, `PATCH/DELETE /branches/:id`
+- `GET/POST /categories`, `PATCH/DELETE /categories/:id`
+- `GET/POST /products`, `PATCH/DELETE /products/:id`
+- `GET /stock`, `POST /stock/adjustments`, and `POST /stock/transfers`
+
+Branch, category, and product deletion deactivates records. Non-admin/non-manager
+branch and stock reads are scoped to the caller's branch; storekeeper adjustments
+and transfer sources are likewise restricted. Stock operations create movements
+and refresh or resolve the corresponding low-stock alert within the same
+transaction. The existing Phase 2 schema supports these features, so Phase 4 adds
+no migration. Frontend components remain planned for Phase 8.
 
