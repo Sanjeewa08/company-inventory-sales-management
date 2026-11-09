@@ -2,6 +2,7 @@
 
 A multi-branch inventory, purchasing, and sales management system. Work is organized
 into incremental phases; Phases 1–6 and Phase 7 parts A–B are implemented in the backend.
+Phase 8 part A provides the frontend foundation; business pages remain planned.
 
 ## Prerequisites
 
@@ -35,6 +36,8 @@ service health response and browse the API reference at `GET /api-docs`. Set
 `JWT_SECRET` to a random secret of at least 32 characters in `.env`. `npm run build`
 creates the production JavaScript in
 `backend/dist`; run it with `npm start`.
+The API allows browser requests from `http://localhost:5173` by default; configure
+`CORS_ORIGIN` in `.env` with comma-separated origins when deploying the frontend elsewhere.
 
 ## Included
 
@@ -50,6 +53,7 @@ creates the production JavaScript in
 - Invoice payments with transactional status updates and downloadable PDF invoices
 - Admin audit-log browsing, low-stock alert management, and scheduled alert reconciliation
 - Read-only sales, stock-valuation, top-product, branch-comparison, and outstanding-payment reports
+- React frontend foundation with JWT login, protected role navigation, reusable UI components, and a responsive dashboard preview
 - Prisma 7 PostgreSQL schema, initial migration, and non-negative stock constraint
 - Idempotent demo seed with branches, users, products, stock, purchase orders, and invoices
 - Jest and Supertest test setup, ESLint, and Prettier
@@ -141,4 +145,23 @@ PostgreSQL aggregations with Decimal-safe monetary output. Managers and admins c
 access every report; accountants can access sales, stock valuation, and outstanding
 payments. No reports are available to other roles. Phase 7 parts A and B add no
 database migration.
+
+## Frontend setup (Phase 8 part A)
+
+From the project root, configure the frontend API URL and start Vite:
+
+```powershell
+Set-Location frontend
+Copy-Item .env.example .env.local
+npm install
+npm run dev
+```
+
+The frontend defaults to `http://localhost:3000` for its API base URL; override it
+with `VITE_API_BASE_URL` in `frontend/.env.local` when needed. The login uses the
+implemented `POST /auth/login` and session restore uses `GET /auth/me`. Sign out
+clears the client token because the backend has no logout endpoint. Role-specific
+navigation and dashboard are in place; business module pages remain placeholders.
+Run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` from
+`frontend/` to verify the app.
 

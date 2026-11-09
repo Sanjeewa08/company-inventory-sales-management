@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import swaggerUi from "swagger-ui-express";
 import { errorHandler } from "./middleware/error-handler";
 import { branchesRouter } from "./modules/branches/branches.routes";
@@ -21,6 +22,20 @@ import { AppError } from "./utils/app-error";
 
 export const app = express();
 
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      const allowedOrigins = (
+        process.env.CORS_ORIGIN ?? "http://localhost:5173"
+      )
+        .split(",")
+        .map((allowedOrigin) => allowedOrigin.trim())
+        .filter(Boolean);
+      callback(null, !origin || allowedOrigins.includes(origin));
+    },
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 app.use(express.json());
 app.use("/health", healthRouter);
 app.use("/auth", authRouter);

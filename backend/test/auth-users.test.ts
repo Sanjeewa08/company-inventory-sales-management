@@ -52,9 +52,13 @@ describe("authentication and user access", () => {
 
     const response = await request(app)
       .post("/auth/login")
+      .set("Origin", "http://localhost:5173")
       .send({ email: "TEST@example.com", password })
       .expect(200);
 
+    expect(response.headers["access-control-allow-origin"]).toBe(
+      "http://localhost:5173",
+    );
     expect(response.body.token).toEqual(expect.any(String));
     expect(response.body.user.email).toBe("test@example.com");
     expect(response.body.user).not.toHaveProperty("passwordHash");
@@ -67,6 +71,41 @@ describe("authentication and user access", () => {
         }),
       }),
     );
+  });
+
+  it("allows the frontend's login preflight request", async () => {
+    await request(app)
+      .options("/auth/login")
+      .set("Origin", "http://localhost:5173")
+      .set("Access-Control-Request-Method", "POST")
+      .set("Access-Control-Request-Headers", "content-type")
+      .expect(204)
+      .expect("Access-Control-Allow-Origin", "http://localhost:5173")
+      .expect("Access-Control-Allow-Methods", /POST/);
+  });
+
+  it("uses configured comma-separated CORS origins", async () => {
+    const previousOrigins = process.env.CORS_ORIGIN;
+    process.env.CORS_ORIGIN =
+      "https://frontend.example.test,http://localhost:5173";
+
+    try {
+      await request(app)
+        .options("/auth/login")
+        .set("Origin", "https://frontend.example.test")
+        .set("Access-Control-Request-Method", "POST")
+        .expect(204)
+        .expect(
+          "Access-Control-Allow-Origin",
+          "https://frontend.example.test",
+        );
+    } finally {
+      if (previousOrigins === undefined) {
+        delete process.env.CORS_ORIGIN;
+      } else {
+        process.env.CORS_ORIGIN = previousOrigins;
+      }
+    }
   });
 
   it("rejects a wrong password", async () => {
