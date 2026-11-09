@@ -7,9 +7,11 @@ import { withBranchScope } from "../../middleware/branch-scope";
 import { prisma } from "../../prisma/client";
 import { AppError } from "../../utils/app-error";
 import { writeAuditLog } from "../audit/audit.service";
+import { refreshLowStockAlert } from "../stock/stock.service";
 import type {
   CreatePurchaseOrderInput,
   ListPurchaseOrdersQuery,
+  ReceivePurchaseOrderInput,
   UpdatePurchaseOrderInput,
 } from "./purchase-orders.schema";
 
@@ -52,8 +54,51 @@ const purchaseOrderSelect = {
   },
 } satisfies Prisma.PurchaseOrderSelect;
 
+const purchaseOrderReceiveSelect = {
+  ...purchaseOrderSelect,
+  items: {
+    ...purchaseOrderSelect.items,
+    select: {
+      ...purchaseOrderSelect.items.select,
+      product: {
+        select: {
+          id: true,
+          sku: true,
+          name: true,
+          unit: true,
+          reorderLevel: true,
+        },
+      },
+    },
+  },
+} satisfies Prisma.PurchaseOrderSelect;
+
+const goodsReceiptSelect = {
+  id: true,
+  number: true,
+  purchaseOrderId: true,
+  branchId: true,
+  receivedById: true,
+  receivedAt: true,
+  notes: true,
+  createdAt: true,
+  items: {
+    orderBy: { createdAt: "asc" as const },
+    select: {
+      id: true,
+      purchaseOrderItemId: true,
+      quantity: true,
+      unitCost: true,
+    },
+  },
+} satisfies Prisma.GoodsReceiptSelect;
+
 type PurchaseOrderRecord = Prisma.PurchaseOrderGetPayload<{
   select: typeof purchaseOrderSelect;
+}>;
+
+type GoodsReceiptRecord = Prisma.GoodsReceiptGetPayload<{
+  select: typeof goodsReceiptSelect;
 }>;
 
 function auditPurchaseOrder(
@@ -80,6 +125,25 @@ function auditPurchaseOrder(
       receivedQuantity: item.receivedQuantity,
       unitCost: item.unitCost.toString(),
       lineTotal: item.lineTotal.toString(),
+    })),
+  };
+}
+
+function auditGoodsReceipt(
+  receipt: GoodsReceiptRecord,
+): Prisma.InputJsonObject {
+  return {
+    id: receipt.id,
+    number: receipt.number,
+    purchaseOrderId: receipt.purchaseOrderId,
+    branchId: receipt.branchId,
+    receivedById: receipt.receivedById,
+    receivedAt: receipt.receivedAt.toISOString(),
+    notes: receipt.notes,
+    items: receipt.items.map((item) => ({
+      purchaseOrderItemId: item.purchaseOrderItemId,
+      quantity: item.quantity,
+      unitCost: item.unitCost.toString(),
     })),
   };
 }
@@ -191,6 +255,30 @@ async function nextPurchaseOrderNumber(
     select: { nextValue: true },
   });
   return `PO-${year}-${String(sequence.nextValue - 1).padStart(4, "0")}`;
+}
+
+async function nextGoodsReceiptNumber(
+  transaction: Prisma.TransactionClient,
+): Promise<string> {
+  const year = new Date().getFullYear();
+  const sequence = await transaction.documentSequence.upsert({
+    where: {
+      type_year: {
+        type: "GOODS_RECEIPT",
+        year,
+      },
+    },
+    create: {
+      type: "GOODS_RECEIPT",
+      year,
+      nextValue: 2,
+    },
+    update: {
+      nextValue: { increment: 1 },
+    },
+    select: { nextValue: true },
+  });
+  return `GRN-${year}-${String(sequence.nextValue - 1).padStart(4, "0")}`;
 }
 
 function scopeOrderBranch(user: AuthenticatedUser, branchId: string): void {
@@ -469,6 +557,202 @@ export async function approvePurchaseOrder(
       transaction,
     );
     return after;
+  });
+}
+
+/** Receives approved order quantities and updates stock atomically. */
+export async function receivePurchaseOrder(
+  id: string,
+  input: ReceivePurchaseOrderInput,
+  user: AuthenticatedUser,
+  ip: string | undefined,
+): Promise<{
+  goodsReceipt: GoodsReceiptRecord;
+  purchaseOrder: PurchaseOrderRecord;
+}> {
+  return prisma.$transaction(async (transaction) => {
+    const current = await transaction.purchaseOrder.findUnique({
+      where: { id },
+      select: { id: true, branchId: true, status: true },
+    });
+    if (!current) {
+      throw new AppError(
+        404,
+        "PURCHASE_ORDER_NOT_FOUND",
+        "Purchase order not found",
+      );
+    }
+    scopeOrderBranch(user, current.branchId);
+    if (
+      current.status !== "APPROVED" &&
+      current.status !== "PARTIALLY_RECEIVED"
+    ) {
+      throw new AppError(
+        409,
+        "PURCHASE_ORDER_NOT_RECEIVABLE",
+        "Only approved or partially received purchase orders can be received",
+      );
+    }
+
+    const receiptLock = await transaction.purchaseOrder.updateMany({
+      where: {
+        id,
+        status: { in: ["APPROVED", "PARTIALLY_RECEIVED"] },
+      },
+      data: { updatedAt: new Date() },
+    });
+    if (receiptLock.count !== 1) {
+      throw new AppError(
+        409,
+        "PURCHASE_ORDER_NOT_RECEIVABLE",
+        "Purchase order status changed and it can no longer be received",
+      );
+    }
+
+    const order = await transaction.purchaseOrder.findUniqueOrThrow({
+      where: { id },
+      select: purchaseOrderReceiveSelect,
+    });
+    scopeOrderBranch(user, order.branchId);
+    if (order.status !== "APPROVED" && order.status !== "PARTIALLY_RECEIVED") {
+      throw new AppError(
+        409,
+        "PURCHASE_ORDER_NOT_RECEIVABLE",
+        "Only approved or partially received purchase orders can be received",
+      );
+    }
+    await validateBranch(transaction, order.branchId);
+
+    const orderItems = new Map(order.items.map((item) => [item.id, item]));
+    const receiptItems = input.items.map((item) => {
+      const orderItem = orderItems.get(item.purchaseOrderItemId);
+      if (!orderItem) {
+        throw new AppError(
+          400,
+          "INVALID_PURCHASE_ORDER_ITEM",
+          "A receipt item does not belong to this purchase order",
+        );
+      }
+      if (item.quantity > orderItem.quantity - orderItem.receivedQuantity) {
+        throw new AppError(
+          400,
+          "OVER_RECEIVING",
+          "Received quantity cannot exceed the remaining ordered quantity",
+        );
+      }
+      return { orderItem, quantity: item.quantity };
+    });
+
+    const receipt = await transaction.goodsReceipt.create({
+      data: {
+        number: await nextGoodsReceiptNumber(transaction),
+        purchaseOrderId: id,
+        branchId: order.branchId,
+        receivedById: user.id,
+        notes: input.notes ?? null,
+        items: {
+          create: receiptItems.map(({ orderItem, quantity }) => ({
+            purchaseOrderItemId: orderItem.id,
+            quantity,
+            unitCost: orderItem.unitCost,
+          })),
+        },
+      },
+      select: goodsReceiptSelect,
+    });
+
+    for (const { orderItem, quantity } of receiptItems) {
+      const itemUpdate = await transaction.purchaseOrderItem.updateMany({
+        where: {
+          id: orderItem.id,
+          purchaseOrderId: id,
+          receivedQuantity: { lte: orderItem.quantity - quantity },
+        },
+        data: { receivedQuantity: { increment: quantity } },
+      });
+      if (itemUpdate.count !== 1) {
+        throw new AppError(
+          400,
+          "OVER_RECEIVING",
+          "Received quantity cannot exceed the remaining ordered quantity",
+        );
+      }
+
+      const stock = await transaction.stock.upsert({
+        where: {
+          productId_branchId: {
+            productId: orderItem.productId,
+            branchId: order.branchId,
+          },
+        },
+        create: {
+          branchId: order.branchId,
+          productId: orderItem.productId,
+          quantity,
+        },
+        update: { quantity: { increment: quantity } },
+        select: { quantity: true },
+      });
+      await transaction.stockMovement.create({
+        data: {
+          productId: orderItem.productId,
+          branchId: order.branchId,
+          userId: user.id,
+          type: "PURCHASE",
+          quantity,
+          referenceType: "GoodsReceipt",
+          referenceId: receipt.id,
+          notes: input.notes ?? `Goods receipt ${receipt.number}`,
+        },
+      });
+      await refreshLowStockAlert(
+        transaction,
+        order.branchId,
+        orderItem.product,
+        stock.quantity,
+        user.id,
+      );
+    }
+
+    const receivedByItemId = new Map(
+      receiptItems.map(({ orderItem, quantity }) => [orderItem.id, quantity]),
+    );
+    const fullyReceived = order.items.every(
+      (item) =>
+        item.receivedQuantity + (receivedByItemId.get(item.id) ?? 0) >=
+        item.quantity,
+    );
+    const updatedOrder = await transaction.purchaseOrder.update({
+      where: { id },
+      data: { status: fullyReceived ? "RECEIVED" : "PARTIALLY_RECEIVED" },
+      select: purchaseOrderSelect,
+    });
+
+    await writeAuditLog(
+      {
+        userId: user.id,
+        action: "CREATE",
+        entity: "GoodsReceipt",
+        entityId: receipt.id,
+        after: auditGoodsReceipt(receipt),
+        ip,
+      },
+      transaction,
+    );
+    await writeAuditLog(
+      {
+        userId: user.id,
+        action: "UPDATE",
+        entity: "PurchaseOrder",
+        entityId: id,
+        before: auditPurchaseOrder(order),
+        after: auditPurchaseOrder(updatedOrder),
+        ip,
+      },
+      transaction,
+    );
+
+    return { goodsReceipt: receipt, purchaseOrder: updatedOrder };
   });
 }
 

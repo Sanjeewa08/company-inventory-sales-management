@@ -23,7 +23,7 @@ so code quality, tests, documentation and a clean git history matter.
 3. Auth + users + RBAC + audit service [DONE]
 4. Branches, categories, products, stock, transfers, low-stock alerts on stock change [DONE]
 5. Suppliers + purchase orders + goods receipts
-   [PART A IMPLEMENTED; GOODS RECEIPTS PENDING]
+   [PART A + B IMPLEMENTED; COMMIT PENDING]
 6. Customers + quotations + invoices + payments + PDF
 7. Audit log endpoint, alerts cron job, reports
 8. Frontend (React)

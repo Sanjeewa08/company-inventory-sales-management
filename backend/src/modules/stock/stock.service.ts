@@ -31,7 +31,7 @@ const stockSelect = {
 
 type StockTransaction = Prisma.TransactionClient;
 
-async function updateLowStockAlert(
+export async function refreshLowStockAlert(
   transaction: StockTransaction,
   branchId: string,
   product: { id: string; name: string; reorderLevel: number },
@@ -186,7 +186,7 @@ export async function adjustStock(
         notes: input.notes ?? null,
       },
     });
-    await updateLowStockAlert(
+    await refreshLowStockAlert(
       transaction,
       branchId,
       product,
@@ -365,14 +365,14 @@ export async function transferStock(
           },
         ],
       });
-      await updateLowStockAlert(
+      await refreshLowStockAlert(
         transaction,
         fromBranchId,
         product,
         sourceQuantity,
         user.id,
       );
-      await updateLowStockAlert(
+      await refreshLowStockAlert(
         transaction,
         toBranchId,
         product,

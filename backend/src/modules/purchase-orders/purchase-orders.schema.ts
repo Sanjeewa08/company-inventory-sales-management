@@ -48,6 +48,26 @@ export const updatePurchaseOrderSchema = z
     path: ["items"],
   });
 
+const receivePurchaseOrderItemSchema = z.object({
+  purchaseOrderItemId: z.string().uuid(),
+  quantity: z.number().int().min(1).max(2_147_483_647),
+});
+
+export const receivePurchaseOrderSchema = z
+  .object({
+    notes: z.string().trim().max(2000).nullable().optional(),
+    items: z.array(receivePurchaseOrderItemSchema).min(1).max(200),
+  })
+  .refine(
+    (value) =>
+      new Set(value.items.map((item) => item.purchaseOrderItemId)).size ===
+      value.items.length,
+    {
+      message: "Each purchase-order item may only appear once",
+      path: ["items"],
+    },
+  );
+
 export const listPurchaseOrdersQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -68,6 +88,9 @@ export type CreatePurchaseOrderInput = z.infer<
 >;
 export type UpdatePurchaseOrderInput = z.infer<
   typeof updatePurchaseOrderSchema
+>;
+export type ReceivePurchaseOrderInput = z.infer<
+  typeof receivePurchaseOrderSchema
 >;
 export type ListPurchaseOrdersQuery = z.infer<
   typeof listPurchaseOrdersQuerySchema

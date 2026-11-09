@@ -8,12 +8,14 @@ import {
   createPurchaseOrderController,
   getPurchaseOrderController,
   listPurchaseOrdersController,
+  receivePurchaseOrderController,
   updatePurchaseOrderController,
 } from "./purchase-orders.controller";
 import {
   createPurchaseOrderSchema,
   listPurchaseOrdersQuerySchema,
   purchaseOrderIdParamsSchema,
+  receivePurchaseOrderSchema,
   updatePurchaseOrderSchema,
 } from "./purchase-orders.schema";
 
@@ -174,6 +176,51 @@ purchaseOrdersRouter.post(
   authorize("ADMIN", "MANAGER"),
   validateRequest({ params: purchaseOrderIdParamsSchema }),
   approvePurchaseOrderController,
+);
+
+/**
+ * @swagger
+ * /purchase-orders/{id}/receive:
+ *   post:
+ *     summary: Receive items against an approved purchase order
+ *     description: Storekeepers may receive only for their own branch; managers and admins may receive for any branch.
+ *     tags: [Purchase Orders]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - { in: path, name: id, required: true, schema: { type: string, format: uuid } }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [items]
+ *             properties:
+ *               notes: { type: string, nullable: true }
+ *               items:
+ *                 type: array
+ *                 minItems: 1
+ *                 items:
+ *                   type: object
+ *                   required: [purchaseOrderItemId, quantity]
+ *                   properties:
+ *                     purchaseOrderItemId: { type: string, format: uuid }
+ *                     quantity: { type: integer, minimum: 1 }
+ *     responses:
+ *       201: { description: Goods receipt created; stock and purchase-order quantities updated }
+ *       400: { description: Invalid receipt or received quantity exceeds the order }
+ *       401: { description: Missing or invalid token }
+ *       403: { description: Role or branch access forbidden }
+ *       404: { description: Purchase order not found }
+ *       409: { description: Purchase order is not approved or partially received }
+ */
+purchaseOrdersRouter.post(
+  "/:id/receive",
+  validateRequest({
+    params: purchaseOrderIdParamsSchema,
+    body: receivePurchaseOrderSchema,
+  }),
+  receivePurchaseOrderController,
 );
 
 /**

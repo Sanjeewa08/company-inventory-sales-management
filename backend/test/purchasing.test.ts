@@ -8,15 +8,21 @@ import {
   cancelPurchaseOrder,
   createPurchaseOrder,
   updatePurchaseOrder,
+  receivePurchaseOrder,
 } from "../src/modules/purchase-orders/purchase-orders.service";
 import {
+  alertMocks,
   auditMocks,
   branchMocks,
   documentSequenceMocks,
+  goodsReceiptMocks,
   productMocks,
   purchaseOrderMocks,
+  purchaseOrderItemMocks,
   purchasingPrismaMock,
   resetPurchasingMocks,
+  stockMocks,
+  stockMovementMocks,
   supplierMocks,
   userMocks,
 } from "./support/purchasing-prisma-mock";
@@ -34,6 +40,8 @@ const branchId = "e501fe6c-78bb-432a-b3b2-cfab4d08e8f3";
 const supplierId = "197b1597-ef44-40dd-a4e8-a4c4a06f84e8";
 const productId = "c50b8962-58db-4efb-883f-4bb04af77873";
 const orderId = "cfd6a44f-0343-4f20-875b-995e9b5b7376";
+const orderItemId = "c682a9d8-68d9-4eb6-89bf-898c52cf0fc6";
+const receiptId = "5a1b19b1-e1db-4b9d-91cd-7bc57605fc51";
 const timestamp = new Date("2026-01-01T00:00:00.000Z");
 const manager: AuthenticatedUser = {
   id: actorId,
@@ -48,14 +56,18 @@ const storekeeper: AuthenticatedUser = {
   role: "STOREKEEPER",
 };
 
-function token(role: "ADMIN" | "MANAGER" | "STOREKEEPER") {
+function token(
+  role: "ADMIN" | "MANAGER" | "STOREKEEPER" | "SALES" | "ACCOUNTANT",
+) {
   return jwt.sign({ role, branchId }, secret, {
     subject: actorId,
     expiresIn: "1h",
   });
 }
 
-function setAuthenticatedUser(role: "ADMIN" | "MANAGER" | "STOREKEEPER") {
+function setAuthenticatedUser(
+  role: "ADMIN" | "MANAGER" | "STOREKEEPER" | "SALES" | "ACCOUNTANT",
+) {
   userMocks.findUnique.mockResolvedValue({
     ...manager,
     role,
@@ -63,20 +75,37 @@ function setAuthenticatedUser(role: "ADMIN" | "MANAGER" | "STOREKEEPER") {
 }
 
 function purchaseOrder(
-  status: "DRAFT" | "APPROVED" | "CANCELLED" = "DRAFT",
+  status:
+    | "DRAFT"
+    | "APPROVED"
+    | "PARTIALLY_RECEIVED"
+    | "RECEIVED"
+    | "CANCELLED" = "DRAFT",
   number = "PO-2026-0001",
+  receivedQuantity = 0,
+  orderBranchId = branchId,
 ) {
   return {
     id: orderId,
     number,
     supplierId,
-    branchId,
+    branchId: orderBranchId,
     createdById: actorId,
-    approvedById: status === "APPROVED" ? actorId : null,
+    approvedById:
+      status === "APPROVED" ||
+      status === "PARTIALLY_RECEIVED" ||
+      status === "RECEIVED"
+        ? actorId
+        : null,
     status,
     orderedAt: timestamp,
     expectedAt: null,
-    approvedAt: status === "APPROVED" ? timestamp : null,
+    approvedAt:
+      status === "APPROVED" ||
+      status === "PARTIALLY_RECEIVED" ||
+      status === "RECEIVED"
+        ? timestamp
+        : null,
     notes: null,
     subtotal: new Prisma.Decimal("21.00"),
     tax: new Prisma.Decimal("1.00"),
@@ -84,13 +113,13 @@ function purchaseOrder(
     createdAt: timestamp,
     updatedAt: timestamp,
     supplier: { id: supplierId, name: "Lanka Tech", email: null },
-    branch: { id: branchId, name: "Colombo" },
+    branch: { id: orderBranchId, name: "Colombo" },
     items: [
       {
-        id: "c682a9d8-68d9-4eb6-89bf-898c52cf0fc6",
+        id: orderItemId,
         productId,
         quantity: 2,
-        receivedQuantity: 0,
+        receivedQuantity,
         unitCost: new Prisma.Decimal("10.50"),
         lineTotal: new Prisma.Decimal("21.00"),
         product: {
@@ -98,7 +127,33 @@ function purchaseOrder(
           sku: "ELE-001",
           name: "USB-C Charger",
           unit: "unit",
+          reorderLevel: 3,
         },
+      },
+    ],
+  };
+}
+
+function goodsReceipt(
+  number: string,
+  quantity: number,
+  receiptBranchId = branchId,
+) {
+  return {
+    id: receiptId,
+    number,
+    purchaseOrderId: orderId,
+    branchId: receiptBranchId,
+    receivedById: actorId,
+    receivedAt: timestamp,
+    notes: null,
+    createdAt: timestamp,
+    items: [
+      {
+        id: "0e69039e-f535-4aeb-899d-9e341b413310",
+        purchaseOrderItemId: orderItemId,
+        quantity,
+        unitCost: new Prisma.Decimal("10.50"),
       },
     ],
   };
@@ -113,6 +168,7 @@ describe("supplier endpoints", () => {
     const specification = JSON.stringify(openApiSpec);
     expect(specification).toContain("/suppliers");
     expect(specification).toContain("/purchase-orders/{id}/approve");
+    expect(specification).toContain("/purchase-orders/{id}/receive");
     expect(specification).not.toContain("/goods-receipts");
   });
 
@@ -464,5 +520,204 @@ describe("purchase-order services", () => {
       .set("Authorization", `Bearer ${token("STOREKEEPER")}`)
       .expect(403);
     expect(purchaseOrderMocks.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("completes the PO lifecycle through partial and final goods receipts", async () => {
+    const draft = purchaseOrder();
+    const approved = purchaseOrder("APPROVED");
+    const partiallyReceived = purchaseOrder("PARTIALLY_RECEIVED", undefined, 1);
+    const received = purchaseOrder("RECEIVED", undefined, 2);
+
+    supplierMocks.findFirst.mockResolvedValue({ id: supplierId });
+    branchMocks.findFirst.mockResolvedValue({ id: branchId });
+    productMocks.findMany.mockResolvedValue([{ id: productId }]);
+    documentSequenceMocks.upsert
+      .mockResolvedValueOnce({ nextValue: 2 })
+      .mockResolvedValueOnce({ nextValue: 2 })
+      .mockResolvedValueOnce({ nextValue: 3 });
+    purchaseOrderMocks.create.mockResolvedValue(draft);
+    purchaseOrderMocks.findUnique
+      .mockResolvedValueOnce(draft)
+      .mockResolvedValueOnce(approved)
+      .mockResolvedValueOnce(partiallyReceived);
+    purchaseOrderMocks.findUniqueOrThrow
+      .mockResolvedValueOnce(approved)
+      .mockResolvedValueOnce(partiallyReceived);
+    purchaseOrderMocks.updateMany.mockResolvedValue({ count: 1 });
+    purchaseOrderMocks.update
+      .mockResolvedValueOnce(approved)
+      .mockResolvedValueOnce(partiallyReceived)
+      .mockResolvedValueOnce(received);
+    goodsReceiptMocks.create
+      .mockResolvedValueOnce(goodsReceipt("GRN-2026-0001", 1))
+      .mockResolvedValueOnce(goodsReceipt("GRN-2026-0002", 1));
+    purchaseOrderItemMocks.updateMany.mockResolvedValue({ count: 1 });
+    stockMocks.upsert
+      .mockResolvedValueOnce({ quantity: 1 })
+      .mockResolvedValueOnce({ quantity: 2 });
+
+    await createPurchaseOrder(
+      {
+        supplierId,
+        branchId,
+        tax: "0.00",
+        items: [{ productId, quantity: 2, unitCost: "10.50" }],
+      },
+      manager,
+      "127.0.0.1",
+    );
+    await approvePurchaseOrder(orderId, manager, "127.0.0.1");
+
+    const firstReceipt = await receivePurchaseOrder(
+      orderId,
+      { items: [{ purchaseOrderItemId: orderItemId, quantity: 1 }] },
+      storekeeper,
+      "127.0.0.1",
+    );
+    expect(firstReceipt.purchaseOrder.status).toBe("PARTIALLY_RECEIVED");
+    expect(firstReceipt.goodsReceipt.number).toBe("GRN-2026-0001");
+
+    const finalReceipt = await receivePurchaseOrder(
+      orderId,
+      { items: [{ purchaseOrderItemId: orderItemId, quantity: 1 }] },
+      storekeeper,
+      "127.0.0.1",
+    );
+    expect(finalReceipt.purchaseOrder.status).toBe("RECEIVED");
+    expect(finalReceipt.goodsReceipt.number).toBe("GRN-2026-0002");
+    expect(documentSequenceMocks.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          type_year: {
+            type: "GOODS_RECEIPT",
+            year: new Date().getFullYear(),
+          },
+        },
+        update: { nextValue: { increment: 1 } },
+      }),
+    );
+    expect(purchaseOrderItemMocks.updateMany).toHaveBeenCalledTimes(2);
+    expect(stockMocks.upsert).toHaveBeenCalledTimes(2);
+    expect(stockMovementMocks.create).toHaveBeenCalledTimes(2);
+    expect(alertMocks.upsert).toHaveBeenCalledTimes(2);
+    expect(auditMocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: "CREATE",
+          entity: "GoodsReceipt",
+          after: expect.objectContaining({ number: "GRN-2026-0001" }),
+          ip: "127.0.0.1",
+        }),
+      }),
+    );
+  });
+
+  it("rejects over-receiving without creating stock or receipt records", async () => {
+    purchaseOrderMocks.findUnique.mockResolvedValue(purchaseOrder("APPROVED"));
+    purchaseOrderMocks.updateMany.mockResolvedValue({ count: 1 });
+    purchaseOrderMocks.findUniqueOrThrow.mockResolvedValue(
+      purchaseOrder("APPROVED"),
+    );
+    branchMocks.findFirst.mockResolvedValue({ id: branchId });
+
+    await expect(
+      receivePurchaseOrder(
+        orderId,
+        { items: [{ purchaseOrderItemId: orderItemId, quantity: 3 }] },
+        manager,
+        "127.0.0.1",
+      ),
+    ).rejects.toMatchObject({ statusCode: 400, code: "OVER_RECEIVING" });
+    expect(goodsReceiptMocks.create).not.toHaveBeenCalled();
+    expect(stockMocks.upsert).not.toHaveBeenCalled();
+    expect(stockMovementMocks.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects receiving a purchase order that is not approved", async () => {
+    purchaseOrderMocks.findUnique.mockResolvedValue(purchaseOrder("DRAFT"));
+
+    await expect(
+      receivePurchaseOrder(
+        orderId,
+        { items: [{ purchaseOrderItemId: orderItemId, quantity: 1 }] },
+        manager,
+        "127.0.0.1",
+      ),
+    ).rejects.toMatchObject({
+      statusCode: 409,
+      code: "PURCHASE_ORDER_NOT_RECEIVABLE",
+    });
+    expect(purchaseOrderMocks.updateMany).not.toHaveBeenCalled();
+    expect(goodsReceiptMocks.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects invalid receipt input and callers with the wrong role", async () => {
+    setAuthenticatedUser("SALES");
+    await request(app)
+      .post(`/purchase-orders/${orderId}/receive`)
+      .set("Authorization", `Bearer ${token("SALES")}`)
+      .send({ items: [{ purchaseOrderItemId: orderItemId, quantity: 1 }] })
+      .expect(403);
+    expect(purchaseOrderMocks.findUnique).not.toHaveBeenCalled();
+
+    setAuthenticatedUser("MANAGER");
+    await request(app)
+      .post(`/purchase-orders/${orderId}/receive`)
+      .set("Authorization", `Bearer ${token("MANAGER")}`)
+      .send({ items: [{ purchaseOrderItemId: orderItemId, quantity: 0 }] })
+      .expect(400);
+    expect(purchaseOrderMocks.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("scopes storekeepers to their branch while managers may receive cross-branch", async () => {
+    const otherBranchId = "d74a189c-ef06-4797-a394-357d764680c3";
+    setAuthenticatedUser("STOREKEEPER");
+    purchaseOrderMocks.findUnique.mockResolvedValue(
+      purchaseOrder("APPROVED", "PO-2026-0001", 0, otherBranchId),
+    );
+    await request(app)
+      .post(`/purchase-orders/${orderId}/receive`)
+      .set("Authorization", `Bearer ${token("STOREKEEPER")}`)
+      .send({ items: [{ purchaseOrderItemId: orderItemId, quantity: 1 }] })
+      .expect(403);
+    expect(goodsReceiptMocks.create).not.toHaveBeenCalled();
+
+    setAuthenticatedUser("MANAGER");
+    const crossBranchOrder = purchaseOrder(
+      "APPROVED",
+      "PO-2026-0001",
+      0,
+      otherBranchId,
+    );
+    purchaseOrderMocks.findUnique.mockResolvedValue(crossBranchOrder);
+    purchaseOrderMocks.updateMany.mockResolvedValue({ count: 1 });
+    purchaseOrderMocks.findUniqueOrThrow.mockResolvedValue(crossBranchOrder);
+    purchaseOrderMocks.update.mockResolvedValue(
+      purchaseOrder("PARTIALLY_RECEIVED", "PO-2026-0001", 1, otherBranchId),
+    );
+    branchMocks.findFirst.mockResolvedValue({ id: otherBranchId });
+    documentSequenceMocks.upsert.mockResolvedValue({ nextValue: 2 });
+    goodsReceiptMocks.create.mockResolvedValue(
+      goodsReceipt("GRN-2026-0001", 1, otherBranchId),
+    );
+    purchaseOrderItemMocks.updateMany.mockResolvedValue({ count: 1 });
+    stockMocks.upsert.mockResolvedValue({ quantity: 1 });
+    alertMocks.upsert.mockResolvedValue(null);
+
+    await request(app)
+      .post(`/purchase-orders/${orderId}/receive`)
+      .set("Authorization", `Bearer ${token("MANAGER")}`)
+      .send({ items: [{ purchaseOrderItemId: orderItemId, quantity: 1 }] })
+      .expect(201);
+    expect(stockMocks.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          productId_branchId: {
+            productId,
+            branchId: otherBranchId,
+          },
+        },
+      }),
+    );
   });
 });

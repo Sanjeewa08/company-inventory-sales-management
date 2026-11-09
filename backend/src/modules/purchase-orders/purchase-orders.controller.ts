@@ -2,6 +2,7 @@ import type { RequestHandler } from "express";
 import type {
   CreatePurchaseOrderInput,
   ListPurchaseOrdersQuery,
+  ReceivePurchaseOrderInput,
   UpdatePurchaseOrderInput,
 } from "./purchase-orders.schema";
 import {
@@ -10,6 +11,7 @@ import {
   createPurchaseOrder,
   getPurchaseOrder,
   listPurchaseOrders,
+  receivePurchaseOrder,
   updatePurchaseOrder,
 } from "./purchase-orders.service";
 
@@ -78,6 +80,21 @@ export const approvePurchaseOrderController: RequestHandler = async (
     request.ip,
   );
   response.status(200).json({ purchaseOrder });
+};
+
+export const receivePurchaseOrderController: RequestHandler = async (
+  request,
+  response,
+) => {
+  const { id } = response.locals.validated.params as { id: string };
+  const input = response.locals.validated.body as ReceivePurchaseOrderInput;
+  const result = await receivePurchaseOrder(
+    id,
+    input,
+    request.user!,
+    request.ip,
+  );
+  response.status(201).json(result);
 };
 
 export const cancelPurchaseOrderController: RequestHandler = async (

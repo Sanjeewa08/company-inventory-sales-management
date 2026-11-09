@@ -35,6 +35,27 @@ export const purchaseOrderMocks = {
   updateMany: queryMock({ count: 0 }),
 };
 
+export const purchaseOrderItemMocks = {
+  updateMany: queryMock({ count: 0 }),
+};
+
+export const goodsReceiptMocks = {
+  create: queryMock(),
+};
+
+export const stockMocks = {
+  upsert: queryMock(),
+};
+
+export const stockMovementMocks = {
+  create: queryMock(),
+};
+
+export const alertMocks = {
+  upsert: queryMock(),
+  updateMany: queryMock(),
+};
+
 export const auditMocks = {
   create: queryMock(),
 };
@@ -49,6 +70,11 @@ export const purchasingPrismaMock = {
   product: productMocks,
   documentSequence: documentSequenceMocks,
   purchaseOrder: purchaseOrderMocks,
+  purchaseOrderItem: purchaseOrderItemMocks,
+  goodsReceipt: goodsReceiptMocks,
+  stock: stockMocks,
+  stockMovement: stockMovementMocks,
+  alert: alertMocks,
   auditLog: auditMocks,
   user: userMocks,
   $transaction: queryMock(),
@@ -60,6 +86,11 @@ const allMocks: QueryMock[] = [
   ...Object.values(productMocks),
   ...Object.values(documentSequenceMocks),
   ...Object.values(purchaseOrderMocks),
+  ...Object.values(purchaseOrderItemMocks),
+  ...Object.values(goodsReceiptMocks),
+  ...Object.values(stockMocks),
+  ...Object.values(stockMovementMocks),
+  ...Object.values(alertMocks),
   ...Object.values(auditMocks),
   ...Object.values(userMocks),
   purchasingPrismaMock.$transaction,
@@ -83,6 +114,12 @@ export function resetPurchasingMocks(): void {
   purchaseOrderMocks.create.mockResolvedValue(null);
   purchaseOrderMocks.update.mockResolvedValue(null);
   purchaseOrderMocks.updateMany.mockResolvedValue({ count: 0 });
+  purchaseOrderItemMocks.updateMany.mockResolvedValue({ count: 0 });
+  goodsReceiptMocks.create.mockResolvedValue(null);
+  stockMocks.upsert.mockResolvedValue(null);
+  stockMovementMocks.create.mockResolvedValue(null);
+  alertMocks.upsert.mockResolvedValue(null);
+  alertMocks.updateMany.mockResolvedValue({ count: 0 });
   auditMocks.create.mockResolvedValue(null);
   userMocks.findUnique.mockResolvedValue(null);
   purchasingPrismaMock.$transaction.mockImplementation(async (operation) => {
