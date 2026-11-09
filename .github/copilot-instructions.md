@@ -7,7 +7,7 @@ so code quality, tests, documentation and a clean git history matter.
 
 ## How to work (READ FIRST)
 - Work ONE phase at a time. The phase list is below.
-- CURRENT PHASE: Phase 6 (update this line manually after each phase is finished and committed).
+- CURRENT PHASE: Phase 7 (update this line manually after each phase is finished and committed).
 - If I don't name a phase in my message, work on the CURRENT PHASE above. Do NOT ask me which
   phase to work on.
 - Do NOT implement anything from a later phase, even if it seems convenient.
@@ -23,8 +23,7 @@ so code quality, tests, documentation and a clean git history matter.
 3. Auth + users + RBAC + audit service [DONE]
 4. Branches, categories, products, stock, transfers, low-stock alerts on stock change [DONE]
 5. Suppliers + purchase orders + goods receipts [DONE]
-6. Customers + quotations + invoices + payments + PDF
-   [ALL PARTS A–C IMPLEMENTED]
+6. Customers + quotations + invoices + payments + PDF [DONE]
 7. Audit log endpoint, alerts cron job, reports
 8. Frontend (React)
 9. Production-ready: Dockerfiles, full docker-compose, GitHub Actions CI, security hardening,
