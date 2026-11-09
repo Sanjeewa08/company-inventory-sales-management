@@ -1,7 +1,7 @@
 # Company Inventory & Sales Management System
 
 A multi-branch inventory, purchasing, and sales management system. Work is organized
-into incremental phases; Phases 1–5 and Phase 6 parts A–C are implemented in the backend.
+into incremental phases; Phases 1–6 and Phase 7 part A are implemented in the backend.
 
 ## Prerequisites
 
@@ -48,6 +48,7 @@ creates the production JavaScript in
 - Customer management and quotation workflows with branch-scoped sales access and transactional quotation numbering
 - Invoice creation, branch stock deduction, cancellation/stock restoration, and low-stock alert refresh
 - Invoice payments with transactional status updates and downloadable PDF invoices
+- Admin audit-log browsing, low-stock alert management, and scheduled alert reconciliation
 - Prisma 7 PostgreSQL schema, initial migration, and non-negative stock constraint
 - Idempotent demo seed with branches, users, products, stock, purchase orders, and invoices
 - Jest and Supertest test setup, ESLint, and Prettier
@@ -118,4 +119,19 @@ them; all payment and invoice status changes are audit-logged. The invoice PDF
 includes customer and line-item details, totals, paid amount, balance, and status.
 Phase 6 adds a migration for the invoice discount column and converted quotation
 status; no additional migration is needed for payments or PDF generation.
+
+## Phase 7 part A API scope
+
+- `GET /audit-logs` (admin only), with user, entity, action, date-range, pagination,
+  and sorting filters
+- `GET /alerts/low-stock` (branch-scoped for every non-admin role) and
+  `PATCH /alerts/:id/acknowledge`
+
+Audit-log entries expose the actor's safe profile fields and recorded before/after
+values. Alert acknowledgements are audit-logged and do not resolve the underlying
+low-stock condition. A daily reconciliation refreshes active low-stock alerts and
+resolves alerts for stock that is above its product reorder level. The schedule
+defaults to midnight and is configurable using `LOW_STOCK_ALERT_CRON`; the job is
+started by the API server, not by application or test imports. Phase 7 part A uses
+the existing schema and requires no migration. Reports remain planned for Phase 7.
 

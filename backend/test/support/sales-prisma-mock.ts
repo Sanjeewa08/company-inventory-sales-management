@@ -57,6 +57,10 @@ export const stockMovementMocks = {
 };
 
 export const alertMocks = {
+  findMany: queryMock([]),
+  findUnique: queryMock(),
+  count: queryMock(0),
+  update: queryMock(),
   upsert: queryMock(),
   updateMany: queryMock(),
 };
@@ -69,6 +73,8 @@ export const paymentMocks = {
 };
 
 export const auditMocks = {
+  findMany: queryMock([]),
+  count: queryMock(0),
   create: queryMock(),
 };
 
@@ -138,12 +144,18 @@ export function resetSalesMocks(): void {
   stockMocks.updateMany.mockResolvedValue({ count: 0 });
   stockMocks.upsert.mockResolvedValue(null);
   stockMovementMocks.create.mockResolvedValue(null);
+  alertMocks.findMany.mockResolvedValue([]);
+  alertMocks.findUnique.mockResolvedValue(null);
+  alertMocks.count.mockResolvedValue(0);
+  alertMocks.update.mockResolvedValue(null);
   alertMocks.upsert.mockResolvedValue(null);
   alertMocks.updateMany.mockResolvedValue({ count: 0 });
   paymentMocks.count.mockResolvedValue(0);
   paymentMocks.findMany.mockResolvedValue([]);
   paymentMocks.aggregate.mockResolvedValue({ _sum: { amount: null } });
   paymentMocks.create.mockResolvedValue(null);
+  auditMocks.findMany.mockResolvedValue([]);
+  auditMocks.count.mockResolvedValue(0);
   auditMocks.create.mockResolvedValue(null);
   userMocks.findUnique.mockResolvedValue(null);
   salesPrismaMock.$transaction.mockImplementation(async (operation) => {

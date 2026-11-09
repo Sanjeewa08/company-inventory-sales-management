@@ -36,8 +36,8 @@ export async function refreshLowStockAlert(
   branchId: string,
   product: { id: string; name: string; reorderLevel: number },
   quantity: number,
-  actorId: string,
-): Promise<void> {
+  actorId: string | null,
+): Promise<{ lowStock: boolean; resolved: number }> {
   if (quantity <= product.reorderLevel) {
     const message = `${product.name} is low on stock (${quantity} remaining).`;
     await transaction.alert.upsert({
@@ -61,10 +61,10 @@ export async function refreshLowStockAlert(
         resolvedById: null,
       },
     });
-    return;
+    return { lowStock: true, resolved: 0 };
   }
 
-  await transaction.alert.updateMany({
+  const result = await transaction.alert.updateMany({
     where: {
       branchId,
       productId: product.id,
@@ -77,6 +77,7 @@ export async function refreshLowStockAlert(
       resolvedById: actorId,
     },
   });
+  return { lowStock: false, resolved: result.count };
 }
 
 /** Returns a paginated stock listing scoped to the user's authorized branches. */

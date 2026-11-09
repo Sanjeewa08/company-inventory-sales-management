@@ -25,6 +25,7 @@ so code quality, tests, documentation and a clean git history matter.
 5. Suppliers + purchase orders + goods receipts [DONE]
 6. Customers + quotations + invoices + payments + PDF [DONE]
 7. Audit log endpoint, alerts cron job, reports
+   [PART A IMPLEMENTED; REPORTS REMAIN]
 8. Frontend (React)
 9. Production-ready: Dockerfiles, full docker-compose, GitHub Actions CI, security hardening,
    full Swagger, final README, deployment notes

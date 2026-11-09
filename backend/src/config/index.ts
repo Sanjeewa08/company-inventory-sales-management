@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import dotenv from "dotenv";
+import cron from "node-cron";
 
 dotenv.config({ path: resolve(__dirname, "../../../.env") });
 
@@ -10,6 +11,7 @@ export interface AppConfig {
   readonly jwtSecret: string;
   readonly nodeEnv: (typeof validNodeEnvironments)[number];
   readonly port: number;
+  readonly lowStockAlertSchedule: string;
 }
 
 /**
@@ -38,10 +40,16 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     throw new Error("NODE_ENV must be development, test, or production");
   }
 
+  const lowStockAlertSchedule = env.LOW_STOCK_ALERT_CRON?.trim() || "0 0 * * *";
+  if (!cron.validate(lowStockAlertSchedule)) {
+    throw new Error("LOW_STOCK_ALERT_CRON must be a valid cron expression");
+  }
+
   return Object.freeze({
     databaseUrl,
     jwtSecret,
     nodeEnv: nodeEnv as AppConfig["nodeEnv"],
     port,
+    lowStockAlertSchedule,
   });
 }
