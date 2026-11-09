@@ -11,6 +11,7 @@ import { invoicesRouter } from "./modules/invoices/invoices.routes";
 import { productsRouter } from "./modules/products/products.routes";
 import { purchaseOrdersRouter } from "./modules/purchase-orders/purchase-orders.routes";
 import { quotationsRouter } from "./modules/quotations/quotations.routes";
+import { reportsRouter } from "./modules/reports/reports.routes";
 import { stockRouter } from "./modules/stock/stock.routes";
 import { suppliersRouter } from "./modules/suppliers/suppliers.routes";
 import { usersRouter } from "./modules/users/users.routes";
@@ -35,6 +36,7 @@ app.use("/stock", stockRouter);
 app.use("/suppliers", suppliersRouter);
 app.use("/purchase-orders", purchaseOrdersRouter);
 app.use("/quotations", quotationsRouter);
+app.use("/reports", reportsRouter);
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(openApiSpec));
 app.use((_request, _response, next) => {
   next(new AppError(404, "NOT_FOUND", "Route not found"));

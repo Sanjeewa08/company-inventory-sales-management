@@ -78,6 +78,10 @@ export const auditMocks = {
   create: queryMock(),
 };
 
+export const reportMocks = {
+  queryRaw: queryMock([]),
+};
+
 export const userMocks = {
   findUnique: queryMock(),
 };
@@ -94,6 +98,7 @@ export const salesPrismaMock = {
   alert: alertMocks,
   payment: paymentMocks,
   auditLog: auditMocks,
+  $queryRaw: reportMocks.queryRaw,
   user: userMocks,
   $transaction: queryMock(),
 };
@@ -110,6 +115,7 @@ const allMocks: QueryMock[] = [
   ...Object.values(alertMocks),
   ...Object.values(paymentMocks),
   ...Object.values(auditMocks),
+  ...Object.values(reportMocks),
   ...Object.values(userMocks),
   salesPrismaMock.$transaction,
 ];
@@ -157,6 +163,7 @@ export function resetSalesMocks(): void {
   auditMocks.findMany.mockResolvedValue([]);
   auditMocks.count.mockResolvedValue(0);
   auditMocks.create.mockResolvedValue(null);
+  reportMocks.queryRaw.mockResolvedValue([]);
   userMocks.findUnique.mockResolvedValue(null);
   salesPrismaMock.$transaction.mockImplementation(async (operation) => {
     if (typeof operation === "function") {

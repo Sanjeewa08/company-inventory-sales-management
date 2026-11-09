@@ -1,7 +1,7 @@
 # Company Inventory & Sales Management System
 
 A multi-branch inventory, purchasing, and sales management system. Work is organized
-into incremental phases; Phases 1–6 and Phase 7 part A are implemented in the backend.
+into incremental phases; Phases 1–6 and Phase 7 parts A–B are implemented in the backend.
 
 ## Prerequisites
 
@@ -49,6 +49,7 @@ creates the production JavaScript in
 - Invoice creation, branch stock deduction, cancellation/stock restoration, and low-stock alert refresh
 - Invoice payments with transactional status updates and downloadable PDF invoices
 - Admin audit-log browsing, low-stock alert management, and scheduled alert reconciliation
+- Read-only sales, stock-valuation, top-product, branch-comparison, and outstanding-payment reports
 - Prisma 7 PostgreSQL schema, initial migration, and non-negative stock constraint
 - Idempotent demo seed with branches, users, products, stock, purchase orders, and invoices
 - Jest and Supertest test setup, ESLint, and Prettier
@@ -120,12 +121,14 @@ includes customer and line-item details, totals, paid amount, balance, and statu
 Phase 6 adds a migration for the invoice discount column and converted quotation
 status; no additional migration is needed for payments or PDF generation.
 
-## Phase 7 part A API scope
+## Phase 7 parts A and B API scope
 
 - `GET /audit-logs` (admin only), with user, entity, action, date-range, pagination,
   and sorting filters
 - `GET /alerts/low-stock` (branch-scoped for every non-admin role) and
   `PATCH /alerts/:id/acknowledge`
+- `GET /reports/sales`, `/reports/stock-valuation`, `/reports/top-products`,
+  `/reports/branch-comparison`, and `/reports/outstanding-payments`
 
 Audit-log entries expose the actor's safe profile fields and recorded before/after
 values. Alert acknowledgements are audit-logged and do not resolve the underlying
@@ -133,5 +136,9 @@ low-stock condition. A daily reconciliation refreshes active low-stock alerts an
 resolves alerts for stock that is above its product reorder level. The schedule
 defaults to midnight and is configurable using `LOW_STOCK_ALERT_CRON`; the job is
 started by the API server, not by application or test imports. Phase 7 part A uses
-the existing schema and requires no migration. Reports remain planned for Phase 7.
+the existing schema and requires no migration. Reports are read-only and use
+PostgreSQL aggregations with Decimal-safe monetary output. Managers and admins can
+access every report; accountants can access sales, stock valuation, and outstanding
+payments. No reports are available to other roles. Phase 7 parts A and B add no
+database migration.
 
