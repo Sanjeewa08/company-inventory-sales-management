@@ -24,8 +24,8 @@ export function ModulePlaceholderPage() {
         {item.label}
       </h2>
       <p className="mt-3 max-w-xl text-sm leading-6 text-slate-500">
-        This section is included in your role-based navigation. Its API-backed
-        business interface will be added in a later Phase 8 increment.
+        This section is included in your role-based navigation, but its
+        API-backed interface is not available in the current frontend.
       </p>
       <div className="mt-7 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center">
         <p className="text-sm font-medium text-slate-700">Workspace ready</p>

@@ -2,8 +2,8 @@
 
 A multi-branch inventory, purchasing, and sales management system. Work is organized
 into incremental phases; Phases 1–6 and Phase 7 parts A–B are implemented in the backend.
-Phase 8 parts A–D provide the frontend foundation, live dashboard, product/category
-management, and stock/transfers screens.
+Phase 8 parts A–G provide the frontend foundation, live dashboard, catalog, stock and
+transfers, suppliers and purchase orders, sales, and admin user management.
 
 ## Prerequisites
 
@@ -32,6 +32,10 @@ npm run typecheck
 npm run dev
 ```
 
+The included demo seed is for local development only and refuses to run unless
+`NODE_ENV=development`. Do not use demo accounts or run the demo seed against production
+data. The listed demo credentials are intended only for a local development database.
+
 The API listens on `http://localhost:3000` by default. Check `GET /health` for the
 service health response and browse the API reference at `GET /api-docs`. Set
 `JWT_SECRET` to a random secret of at least 32 characters in `.env`. `npm run build`
@@ -39,6 +43,12 @@ creates the production JavaScript in
 `backend/dist`; run it with `npm start`.
 The API allows browser requests from `http://localhost:5173` by default; configure
 `CORS_ORIGIN` in `.env` with comma-separated origins when deploying the frontend elsewhere.
+The Compose database service is for local development and binds its published port to
+loopback. For production deployment to the existing Azure VM and PostgreSQL Docker
+service, follow [DEPLOYMENT.md](DEPLOYMENT.md). The production Compose file runs only
+the API, binds it to loopback for the Nginx HTTPS proxy, and does not create, replace,
+or manage the PostgreSQL container or volume. Production migrations are a separate,
+explicit step; do not run the development seed or use sample database credentials.
 
 ## Included
 
@@ -151,7 +161,7 @@ access every report; accountants can access sales, stock valuation, and outstand
 payments. No reports are available to other roles. Phase 7 parts A and B add no
 database migration.
 
-## Frontend setup (Phase 8 parts A-E)
+## Frontend setup (Phase 8 parts A-G)
 
 From the project root, configure the frontend API URL and start Vite:
 
@@ -177,9 +187,40 @@ using the existing APIs. The API does not expose purchase-order date-range filte
 or a goods-receipt history endpoint; received quantities are shown and the receipt
 number is returned in the receipt confirmation. Phase 8D and 8E require no database
 migration.
-Other business module pages remain placeholders.
+Customer, quotation, and invoice pages use the existing Phase 6 APIs. Customers support
+search, filtering, details, create/edit, and activation/deactivation; quotations support
+search/filtering, draft editing, send/accept/expire, details, and starting invoice creation
+from an accepted quotation. Invoice creation, filtering, details, payment history and
+role-authorized payment entry, cancellation, and PDF download are available. Invoice
+filters use the backend's status, customer, branch, issue-date, and sort options; the API
+does not provide invoice text search. Quotation rejection and conversion-history actions
+are not exposed by the backend. Phase 8F adds no database migration.
+User management is available to ADMIN only and uses the existing `GET/POST /users`,
+`PATCH /users/:id`, and `DELETE /users/:id` endpoints. The list supports name/email,
+role, branch, active-state filters, and pagination; details are shown from the safe user
+list response because there is no individual-user GET endpoint. Passwords are set only
+when creating an account: there is no admin password-reset endpoint, and password hashes
+are never requested or displayed. Non-admin/non-manager users need a branch assignment
+for branch-scoped APIs. Deactivation is soft-delete; inactive accounts can be reactivated
+with the supported PATCH operation. Phase 8G adds no database migration.
+The navigation entries for branches, alerts, audit logs, and reports still lead to
+placeholder pages; the corresponding backend APIs are available but do not yet have
+dedicated frontend management screens. The backend supports changing the signed-in
+user's password, but the frontend has no password-change form. To deploy the frontend,
+set `VITE_API_BASE_URL` to the reachable API URL at build time, configure backend
+`CORS_ORIGIN` for the deployed frontend origin, and configure the static host to fall
+back to `index.html` for BrowserRouter paths. Use HTTPS in production; the frontend
+stores its short-lived bearer token in browser localStorage.
 Phase 8C adds an optional unique product barcode for catalog search; apply its additive
 database migration with `npx prisma migrate dev` from `backend/`.
 Run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` from
 `frontend/` to verify the app.
+
+## Production deployment
+
+The repository includes a multi-stage backend Dockerfile, an API-only production Compose
+file, Nginx bootstrap/TLS templates, and Vercel SPA routing. See
+[DEPLOYMENT.md](DEPLOYMENT.md) for environment setup, migration gates, HTTPS, Vercel
+configuration, and verification. No cloud, firewall, DNS, Nginx, container, or database
+deployment commands are run by the development workflow.
 

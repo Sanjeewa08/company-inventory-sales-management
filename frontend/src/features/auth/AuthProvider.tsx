@@ -1,3 +1,4 @@
+import axios from "axios";
 import {
   useCallback,
   useEffect,
@@ -42,8 +43,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(data.user);
         setStatus("authenticated");
       })
-      .catch(() => {
-        clearAccessToken();
+      .catch((error: unknown) => {
+        if (axios.isAxiosError(error) && error.response?.status === 401) {
+          clearAccessToken();
+        }
         setUser(null);
         setStatus("unauthenticated");
       });

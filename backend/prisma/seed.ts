@@ -2,6 +2,10 @@ import bcrypt from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Prisma, PrismaClient } from "../src/generated/prisma/client";
 
+if (process.env.NODE_ENV !== "development") {
+  throw new Error("The demo seed may only run when NODE_ENV=development.");
+}
+
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
   throw new Error("DATABASE_URL must be set before seeding the database.");

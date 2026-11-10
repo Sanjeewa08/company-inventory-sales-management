@@ -54,6 +54,7 @@ export function Header({ title, onMenuClick }: HeaderProps) {
             .toUpperCase()}
         </div>
         <Button
+          aria-label="Sign out"
           className="px-3 sm:px-4"
           onClick={handleLogout}
           variant="ghost"

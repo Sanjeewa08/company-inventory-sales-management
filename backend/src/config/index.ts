@@ -11,6 +11,7 @@ export interface AppConfig {
   readonly jwtSecret: string;
   readonly nodeEnv: (typeof validNodeEnvironments)[number];
   readonly port: number;
+  readonly trustProxyHops: number;
   readonly lowStockAlertSchedule: string;
 }
 
@@ -23,6 +24,16 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
 
   if (!Number.isInteger(port) || port < 1 || port > 65_535) {
     throw new Error("PORT must be an integer between 1 and 65535");
+  }
+
+  const rawTrustProxyHops = env.TRUST_PROXY_HOPS ?? "0";
+  const trustProxyHops = Number(rawTrustProxyHops);
+  if (
+    !Number.isInteger(trustProxyHops) ||
+    trustProxyHops < 0 ||
+    trustProxyHops > 10
+  ) {
+    throw new Error("TRUST_PROXY_HOPS must be an integer between 0 and 10");
   }
 
   const databaseUrl = env.DATABASE_URL?.trim();
@@ -50,6 +61,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): AppConfig {
     jwtSecret,
     nodeEnv: nodeEnv as AppConfig["nodeEnv"],
     port,
+    trustProxyHops,
     lowStockAlertSchedule,
   });
 }
