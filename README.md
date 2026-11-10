@@ -151,7 +151,7 @@ access every report; accountants can access sales, stock valuation, and outstand
 payments. No reports are available to other roles. Phase 7 parts A and B add no
 database migration.
 
-## Frontend setup (Phase 8 parts A and B)
+## Frontend setup (Phase 8 parts A-E)
 
 From the project root, configure the frontend API URL and start Vite:
 
@@ -165,12 +165,19 @@ npm run dev
 The frontend defaults to `http://localhost:3000` for its API base URL; override it
 with `VITE_API_BASE_URL` in `frontend/.env.local` when needed. The login uses the
 implemented `POST /auth/login` and session restore uses `GET /auth/me`. Sign out
-clears the client token because the backend has no logout endpoint. Role-specific navigation, a live dashboard, product/category management, and stock
-management are in place. Stock reads are branch-scoped for non-admin/non-manager roles;
-adjustments and immediate transfers are available to ADMIN, MANAGER, and STOREKEEPER.
-The stock API has no durable transfer-history or approval/dispatch/receive endpoints,
-so the UI only shows transfers completed during the current session. Phase 8D requires
-no database migration. Other business module pages remain placeholders.
+clears the client token because the backend has no logout endpoint. Role-specific
+navigation, a live dashboard, product/category management, stock management,
+supplier management, and purchase orders are implemented. Stock reads are
+branch-scoped for non-admin/non-manager roles; adjustments and immediate transfers
+are available to ADMIN, MANAGER, and STOREKEEPER. The stock API has no durable
+transfer-history or approval/dispatch/receive endpoints, so the UI only shows
+transfers completed during the current session. Purchase orders support draft
+creation/editing, manager/admin approval, cancellation, and partial/full receipt
+using the existing APIs. The API does not expose purchase-order date-range filters
+or a goods-receipt history endpoint; received quantities are shown and the receipt
+number is returned in the receipt confirmation. Phase 8D and 8E require no database
+migration.
+Other business module pages remain placeholders.
 Phase 8C adds an optional unique product barcode for catalog search; apply its additive
 database migration with `npx prisma migrate dev` from `backend/`.
 Run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` from

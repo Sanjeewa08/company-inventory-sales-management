@@ -2,7 +2,8 @@
 
 The frontend uses React, Vite, TypeScript, Tailwind CSS, React Router, Axios,
 Recharts, React Hook Form, and Zod. It includes a live dashboard, product/category
-catalog management, and stock/transfer management.
+catalog management, stock/transfer management, supplier management, and purchase
+orders.
 
 The dashboard loads live product and low-stock counts for authenticated users,
 sales and stock-valuation reports for ADMIN/MANAGER/ACCOUNTANT, branch-scoped
@@ -13,7 +14,15 @@ available only to ADMIN and MANAGER. Stock supports branch-scoped search and fil
 reason-required adjustments, and the backend's immediate transfer operation. Transfers
 created in the current page session are shown as completed; the backend does not expose
 a persisted transfer-history or approval/dispatch/receive workflow. Other business pages
-remain placeholders. Phase 8D adds no database migration.
+remain placeholders. Suppliers support search, active-state filtering, sorting,
+pagination, details and manager/admin create/edit/activation. Purchase orders support
+search, status/supplier/branch filters, sorting, pagination, draft create/edit,
+manager/admin approval, cancellation and partial/full receiving. Storekeepers are
+restricted to their permitted branch by the backend and can only cancel draft orders.
+The API does not support purchase-order date filters or a goods-receipt history list;
+the interface displays received quantities and server-calculated order totals, and
+shows the new receipt number in its confirmation.
+Phase 8D and 8E add no database migration.
 
 ## Local setup
 

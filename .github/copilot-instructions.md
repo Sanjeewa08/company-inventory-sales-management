@@ -7,7 +7,7 @@ so code quality, tests, documentation and a clean git history matter.
 
 ## How to work (READ FIRST)
 - Work ONE phase at a time. The phase list is below.
-- CURRENT PHASE: Phase 8 (Parts A+B+C+D: frontend foundation, live dashboard, catalog, and stock/transfer management).
+- CURRENT PHASE: Phase 8 (Parts A+B+C+D+E: frontend foundation, live dashboard, catalog, stock/transfers, suppliers, and purchase orders).
 - If I don't name a phase in my message, work on the CURRENT PHASE above. Do NOT ask me which
   phase to work on.
 - Do NOT implement anything from a later phase, even if it seems convenient.
@@ -27,7 +27,7 @@ so code quality, tests, documentation and a clean git history matter.
 7. Audit log endpoint, alerts cron job, reports
    [PARTS A + B IMPLEMENTED]
 8. Frontend (React)
-   [PARTS A + B + C + D IMPLEMENTED; CATALOG AND STOCK MANAGEMENT AVAILABLE]
+   [PARTS A + B + C + D + E IMPLEMENTED; CATALOG, STOCK, SUPPLIERS, AND PURCHASE ORDERS AVAILABLE]
 9. Production-ready: Dockerfiles, full docker-compose, GitHub Actions CI, security hardening,
    full Swagger, final README, deployment notes
 

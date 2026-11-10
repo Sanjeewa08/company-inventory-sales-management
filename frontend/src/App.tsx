@@ -9,6 +9,8 @@ import { CategoriesPage } from "./pages/CategoriesPage";
 import { ModulePlaceholderPage } from "./pages/ModulePlaceholderPage";
 import { ProductsPage } from "./pages/ProductsPage";
 import { StockPage } from "./pages/StockPage";
+import { SuppliersPage } from "./pages/SuppliersPage";
+import { PurchaseOrdersPage } from "./pages/PurchaseOrdersPage";
 
 function ApplicationRoutes() {
   return (
@@ -20,6 +22,8 @@ function ApplicationRoutes() {
           <Route path="products" element={<ProductsPage />} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="stock" element={<StockPage />} />
+          <Route path="suppliers" element={<SuppliersPage />} />
+          <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
           <Route path=":section" element={<ModulePlaceholderPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
