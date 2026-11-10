@@ -2,7 +2,8 @@
 
 A multi-branch inventory, purchasing, and sales management system. Work is organized
 into incremental phases; Phases 1–6 and Phase 7 parts A–B are implemented in the backend.
-Phase 8 parts A–C provide the frontend foundation, live dashboard, and product/category management.
+Phase 8 parts A–D provide the frontend foundation, live dashboard, product/category
+management, and stock/transfers screens.
 
 ## Prerequisites
 
@@ -55,6 +56,7 @@ The API allows browser requests from `http://localhost:5173` by default; configu
 - Read-only sales, stock-valuation, top-product, branch-comparison, and outstanding-payment reports
 - React frontend with JWT login, protected role navigation, reusable UI components, and role-aware live dashboard metrics
 - Product and category management pages with search, filtering, pagination, forms, and role-gated mutations
+- Stock management with branch/category/status filters, reason-required adjustments, and immediate inter-branch transfers
 - Prisma 7 PostgreSQL schema, initial migration, and non-negative stock constraint
 - Idempotent demo seed with branches, users, products, stock, purchase orders, and invoices
 - Jest and Supertest test setup, ESLint, and Prettier
@@ -76,7 +78,9 @@ branch and stock reads are scoped to the caller's branch; storekeeper adjustment
 and transfer sources are likewise restricted. Stock operations create movements
 and refresh or resolve the corresponding low-stock alert within the same
 transaction. The existing Phase 2 schema supports these features, so Phase 4 adds
-no migration. Frontend components remain planned for Phase 8.
+no migration. `GET /stock` supports paginated branch, product, search (name/SKU/barcode),
+category, and stock-status filters. Stock adjustment requests require a reason in
+`notes`. Frontend stock management is available in Phase 8D.
 
 ## Phase 5 API scope
 
@@ -161,9 +165,12 @@ npm run dev
 The frontend defaults to `http://localhost:3000` for its API base URL; override it
 with `VITE_API_BASE_URL` in `frontend/.env.local` when needed. The login uses the
 implemented `POST /auth/login` and session restore uses `GET /auth/me`. Sign out
-clears the client token because the backend has no logout endpoint. Role-specific navigation and a live dashboard are in place. Products and categories are
-available to all authenticated roles for reading; product and category writes are limited
-to ADMIN and MANAGER. Other business module pages remain placeholders.
+clears the client token because the backend has no logout endpoint. Role-specific navigation, a live dashboard, product/category management, and stock
+management are in place. Stock reads are branch-scoped for non-admin/non-manager roles;
+adjustments and immediate transfers are available to ADMIN, MANAGER, and STOREKEEPER.
+The stock API has no durable transfer-history or approval/dispatch/receive endpoints,
+so the UI only shows transfers completed during the current session. Phase 8D requires
+no database migration. Other business module pages remain placeholders.
 Phase 8C adds an optional unique product barcode for catalog search; apply its additive
 database migration with `npx prisma migrate dev` from `backend/`.
 Run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` from

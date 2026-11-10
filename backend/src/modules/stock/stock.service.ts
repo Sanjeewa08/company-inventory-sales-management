@@ -22,11 +22,15 @@ const stockSelect = {
     select: {
       id: true,
       sku: true,
+      barcode: true,
       name: true,
       unit: true,
+      categoryId: true,
       reorderLevel: true,
+      category: { select: { id: true, name: true } },
     },
   },
+  branch: { select: { id: true, name: true } },
 } as const;
 
 type StockTransaction = Prisma.TransactionClient;
@@ -92,12 +96,102 @@ export async function listStock(
   const where: Prisma.StockWhereInput = {
     ...(scoped.branchId ? { branchId: scoped.branchId } : {}),
     ...(query.productId ? { productId: query.productId } : {}),
+    ...(query.search || query.categoryId
+      ? {
+          product: {
+            ...(query.categoryId ? { categoryId: query.categoryId } : {}),
+            ...(query.search
+              ? {
+                  OR: [
+                    {
+                      name: {
+                        contains: query.search,
+                        mode: "insensitive",
+                      },
+                    },
+                    {
+                      sku: {
+                        contains: query.search,
+                        mode: "insensitive",
+                      },
+                    },
+                    {
+                      barcode: {
+                        contains: query.search,
+                        mode: "insensitive",
+                      },
+                    },
+                  ],
+                }
+              : {}),
+          },
+        }
+      : {}),
   };
+
+  if (query.status) {
+    const conditions: Prisma.Sql[] = [];
+    if (scoped.branchId) {
+      conditions.push(Prisma.sql`s."branchId" = ${scoped.branchId}::uuid`);
+    }
+    if (query.productId) {
+      conditions.push(Prisma.sql`s."productId" = ${query.productId}::uuid`);
+    }
+    if (query.categoryId) {
+      conditions.push(Prisma.sql`p."categoryId" = ${query.categoryId}::uuid`);
+    }
+    if (query.search) {
+      const search = `%${query.search}%`;
+      conditions.push(
+        Prisma.sql`(p."name" ILIKE ${search} OR p."sku" ILIKE ${search} OR p."barcode" ILIKE ${search})`,
+      );
+    }
+    if (query.status === "OUT_OF_STOCK") {
+      conditions.push(Prisma.sql`s."quantity" = 0`);
+    } else if (query.status === "LOW_STOCK") {
+      conditions.push(
+        Prisma.sql`s."quantity" > 0 AND s."quantity" <= p."reorderLevel"`,
+      );
+    } else {
+      conditions.push(Prisma.sql`s."quantity" > p."reorderLevel"`);
+    }
+    const whereSql = Prisma.join(conditions, " AND ");
+    const sortColumn = Prisma.raw(
+      query.sortBy === "quantity" ? 's."quantity"' : 's."createdAt"',
+    );
+    const sortDirection = Prisma.raw(query.sortOrder.toUpperCase());
+    return prisma.$transaction(async (transaction) => {
+      const [idRows, countRows] = await Promise.all([
+        transaction.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+          SELECT s."id"
+          FROM "Stock" AS s
+          INNER JOIN "Product" AS p ON p."id" = s."productId"
+          WHERE ${whereSql}
+          ORDER BY ${sortColumn} ${sortDirection}, s."id" ASC
+          LIMIT ${query.limit}
+          OFFSET ${(query.page - 1) * query.limit}
+        `),
+        transaction.$queryRaw<Array<{ total: bigint }>>(Prisma.sql`
+          SELECT COUNT(*)::bigint AS "total"
+          FROM "Stock" AS s
+          INNER JOIN "Product" AS p ON p."id" = s."productId"
+          WHERE ${whereSql}
+        `),
+      ]);
+      const stock = await transaction.stock.findMany({
+        where: { id: { in: idRows.map((row) => row.id) } },
+        select: stockSelect,
+        orderBy: [{ [query.sortBy]: query.sortOrder }, { id: "asc" }],
+      });
+      return { stock, total: Number(countRows[0]?.total ?? 0n) };
+    });
+  }
+
   const [stock, total] = await prisma.$transaction([
     prisma.stock.findMany({
       where,
       select: stockSelect,
-      orderBy: { [query.sortBy]: query.sortOrder },
+      orderBy: [{ [query.sortBy]: query.sortOrder }, { id: "asc" }],
       skip: (query.page - 1) * query.limit,
       take: query.limit,
     }),

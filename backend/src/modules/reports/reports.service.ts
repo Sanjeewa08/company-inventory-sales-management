@@ -42,19 +42,28 @@ export async function getSalesReport(query: SalesReportQuery): Promise<
     ? Prisma.sql`AND i."branchId" = ${query.branchId}`
     : Prisma.empty;
   const rows = await prisma.$queryRaw<SalesRow[]>(Prisma.sql`
+    WITH invoice_periods AS (
+      SELECT
+        date_trunc(${query.groupBy}, i."issuedAt") AS period,
+        i.subtotal,
+        i.discount,
+        i.tax,
+        i.total
+      FROM "Invoice" AS i
+      WHERE i.status <> 'CANCELLED'
+        AND i."issuedAt" >= ${query.from}
+        AND i."issuedAt" <= ${query.to}
+        ${branchFilter}
+    )
     SELECT
-      date_trunc(${query.groupBy}, i."issuedAt") AS period,
       COUNT(*)::bigint AS "invoiceCount",
-      COALESCE(SUM(i.subtotal), 0)::numeric AS subtotal,
-      COALESCE(SUM(i.discount), 0)::numeric AS discount,
-      COALESCE(SUM(i.tax), 0)::numeric AS tax,
-      COALESCE(SUM(i.total), 0)::numeric AS total
-    FROM "Invoice" AS i
-    WHERE i.status <> 'CANCELLED'
-      AND i."issuedAt" >= ${query.from}
-      AND i."issuedAt" <= ${query.to}
-      ${branchFilter}
-    GROUP BY date_trunc(${query.groupBy}, i."issuedAt")
+      period,
+      COALESCE(SUM(subtotal), 0)::numeric AS subtotal,
+      COALESCE(SUM(discount), 0)::numeric AS discount,
+      COALESCE(SUM(tax), 0)::numeric AS tax,
+      COALESCE(SUM(total), 0)::numeric AS total
+    FROM invoice_periods
+    GROUP BY period
     ORDER BY period ASC
   `);
   return rows.map((row) => ({

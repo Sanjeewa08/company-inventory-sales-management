@@ -8,6 +8,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { CategoriesPage } from "./pages/CategoriesPage";
 import { ModulePlaceholderPage } from "./pages/ModulePlaceholderPage";
 import { ProductsPage } from "./pages/ProductsPage";
+import { StockPage } from "./pages/StockPage";
 
 function ApplicationRoutes() {
   return (
@@ -18,6 +19,7 @@ function ApplicationRoutes() {
           <Route index element={<DashboardPage />} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="categories" element={<CategoriesPage />} />
+          <Route path="stock" element={<StockPage />} />
           <Route path=":section" element={<ModulePlaceholderPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

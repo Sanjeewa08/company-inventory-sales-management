@@ -28,6 +28,9 @@ stockRouter.use(authenticate);
  *       - { in: query, name: limit, schema: { type: integer, minimum: 1, maximum: 100 } }
  *       - { in: query, name: branchId, schema: { type: string, format: uuid } }
  *       - { in: query, name: productId, schema: { type: string, format: uuid } }
+ *       - { in: query, name: search, description: Search product name, SKU, or barcode, schema: { type: string } }
+ *       - { in: query, name: categoryId, schema: { type: string, format: uuid } }
+ *       - { in: query, name: status, schema: { type: string, enum: [IN_STOCK, LOW_STOCK, OUT_OF_STOCK] } }
  *       - { in: query, name: sortBy, schema: { type: string, enum: [quantity, createdAt] } }
  *       - { in: query, name: sortOrder, schema: { type: string, enum: [asc, desc] } }
  *     responses:
@@ -54,12 +57,12 @@ stockRouter.get(
  *         application/json:
  *           schema:
  *             type: object
- *             required: [branchId, productId, quantity]
+ *             required: [branchId, productId, quantity, notes]
  *             properties:
  *               branchId: { type: string, format: uuid }
  *               productId: { type: string, format: uuid }
  *               quantity: { type: integer, description: Non-zero; may be negative to reduce stock }
- *               notes: { type: string, nullable: true }
+ *               notes: { type: string, minLength: 1, maxLength: 1000 }
  *     responses:
  *       200: { description: Updated stock }
  *       400: { description: Invalid request or insufficient stock }

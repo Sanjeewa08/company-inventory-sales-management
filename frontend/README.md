@@ -1,15 +1,19 @@
 # Meridian frontend
 
 The frontend uses React, Vite, TypeScript, Tailwind CSS, React Router, Axios,
-Recharts, React Hook Form, and Zod. It includes a live dashboard and product/category
-catalog management pages.
+Recharts, React Hook Form, and Zod. It includes a live dashboard, product/category
+catalog management, and stock/transfer management.
 
 The dashboard loads live product and low-stock counts for authenticated users,
 sales and stock-valuation reports for ADMIN/MANAGER/ACCOUNTANT, branch-scoped
 invoices for SALES and finance/management roles, and branch-scoped stock counts
 for STOREKEEPER. Products and categories support search, status/category filtering,
 pagination, details and forms; create, edit, activate and deactivate actions are
-available only to ADMIN and MANAGER. Other business pages remain placeholders.
+available only to ADMIN and MANAGER. Stock supports branch-scoped search and filters,
+reason-required adjustments, and the backend's immediate transfer operation. Transfers
+created in the current page session are shown as completed; the backend does not expose
+a persisted transfer-history or approval/dispatch/receive workflow. Other business pages
+remain placeholders. Phase 8D adds no database migration.
 
 ## Local setup
 

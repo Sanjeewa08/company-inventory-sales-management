@@ -5,6 +5,9 @@ export const listStockQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   branchId: z.string().uuid().optional(),
   productId: z.string().uuid().optional(),
+  search: z.string().trim().min(1).optional(),
+  categoryId: z.string().uuid().optional(),
+  status: z.enum(["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK"]).optional(),
   sortBy: z.enum(["quantity", "createdAt"]).default("createdAt"),
   sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
@@ -20,7 +23,7 @@ export const adjustStockSchema = z.object({
     .refine((quantity) => quantity !== 0, {
       message: "Adjustment quantity cannot be zero",
     }),
-  notes: z.string().trim().max(1000).nullable().optional(),
+  notes: z.string().trim().min(1, "A reason is required").max(1000),
 });
 
 const transferItemSchema = z.object({

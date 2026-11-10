@@ -92,8 +92,37 @@ describe("reports API", () => {
       });
 
     expect(reportMocks.queryRaw).toHaveBeenCalledTimes(1);
-    const query = reportMocks.queryRaw.mock.calls[0][0];
+    const query = reportMocks.queryRaw.mock.calls[0][0] as Prisma.Sql;
     expect(JSON.stringify(query)).toContain("CANCELLED");
+    expect(query.sql).toContain("WITH invoice_periods AS");
+    expect(query.sql).toContain("GROUP BY period");
+    expect(query.sql).not.toContain("GROUP BY date_trunc");
+    expect(query.values).toContain("month");
+    expect(query.values).toContain(branchId);
+    expect(query.values).toContainEqual(new Date("2026-03-01T00:00:00.000Z"));
+    expect(query.values).toContainEqual(new Date("2026-03-31T23:59:59.999Z"));
+  });
+
+  it("uses the default day grouping once while preserving the requested date range", async () => {
+    setAuthenticatedUser("MANAGER");
+    reportMocks.queryRaw.mockResolvedValue([]);
+
+    await request(app)
+      .get(
+        "/reports/sales?from=2026-03-10T00:00:00.000Z&to=2026-03-12T23:59:59.999Z",
+      )
+      .set("Authorization", `Bearer ${token("MANAGER")}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.sales).toEqual([]);
+      });
+
+    const query = reportMocks.queryRaw.mock.calls[0][0] as Prisma.Sql;
+    expect(query.values.filter((value) => value === "day")).toHaveLength(1);
+    expect(query.sql).toContain("date_trunc");
+    expect(query.sql).toContain("GROUP BY period");
+    expect(query.values).toContainEqual(new Date("2026-03-10T00:00:00.000Z"));
+    expect(query.values).toContainEqual(new Date("2026-03-12T23:59:59.999Z"));
   });
 
   it("calculates valuation per branch and grand totals without floating-point sums", async () => {

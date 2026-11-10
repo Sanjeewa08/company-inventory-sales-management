@@ -67,6 +67,7 @@ export const prismaDomainMock = {
   alert: alertMocks,
   auditLog: auditMocks,
   user: userMocks,
+  $queryRaw: queryMock([]),
   $transaction: queryMock(),
 };
 
@@ -79,6 +80,7 @@ const allQueryMocks: QueryMock[] = [
   ...Object.values(alertMocks),
   ...Object.values(auditMocks),
   ...Object.values(userMocks),
+  prismaDomainMock.$queryRaw,
   prismaDomainMock.$transaction,
 ];
 

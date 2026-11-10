@@ -236,6 +236,66 @@ describe("branch, catalog, and stock APIs", () => {
     expect(stockMocks.findMany).not.toHaveBeenCalled();
   });
 
+  it("searches stock by product fields and category", async () => {
+    setAuthenticatedUser("MANAGER");
+    stockMocks.findMany.mockResolvedValue([]);
+    stockMocks.count.mockResolvedValue(0);
+
+    await request(app)
+      .get(`/stock?search=charger&categoryId=${productId}`)
+      .set("Authorization", `Bearer ${token("MANAGER")}`)
+      .expect(200);
+
+    expect(stockMocks.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          product: expect.objectContaining({
+            categoryId: productId,
+            OR: expect.arrayContaining([
+              expect.objectContaining({
+                name: expect.objectContaining({ contains: "charger" }),
+              }),
+              expect.objectContaining({
+                sku: expect.objectContaining({ contains: "charger" }),
+              }),
+              expect.objectContaining({
+                barcode: expect.objectContaining({ contains: "charger" }),
+              }),
+            ]),
+          }),
+        }),
+      }),
+    );
+  });
+
+  it("filters stock status using the product reorder level", async () => {
+    setAuthenticatedUser("MANAGER");
+    prismaDomainMock.$queryRaw
+      .mockResolvedValueOnce([{ id: "stock-id" }])
+      .mockResolvedValueOnce([{ total: 1n }]);
+    stockMocks.findMany.mockResolvedValue([]);
+
+    await request(app)
+      .get("/stock?status=LOW_STOCK")
+      .set("Authorization", `Bearer ${token("MANAGER")}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.pagination.total).toBe(1);
+      });
+
+    expect(prismaDomainMock.$queryRaw).toHaveBeenCalledTimes(2);
+    expect(prismaDomainMock.$queryRaw.mock.calls[0]?.[0]).toMatchObject({
+      sql: expect.stringContaining(
+        '"quantity" > 0 AND s."quantity" <= p."reorderLevel"',
+      ),
+    });
+    expect(stockMocks.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: ["stock-id"] } },
+      }),
+    );
+  });
+
   it("validates stock adjustments and enforces manager-only catalog writes", async () => {
     setAuthenticatedUser("SALES");
 
@@ -250,6 +310,12 @@ describe("branch, catalog, and stock APIs", () => {
       .post("/stock/adjustments")
       .set("Authorization", `Bearer ${token("STOREKEEPER")}`)
       .send({ branchId, productId, quantity: 0 })
+      .expect(400);
+
+    await request(app)
+      .post("/stock/adjustments")
+      .set("Authorization", `Bearer ${token("STOREKEEPER")}`)
+      .send({ branchId, productId, quantity: 1 })
       .expect(400);
 
     setAuthenticatedUser("SALES");
@@ -287,7 +353,12 @@ describe("stock services", () => {
     });
 
     const updated = await adjustStock(
-      { branchId, productId, quantity: 2 },
+      {
+        branchId,
+        productId,
+        quantity: 2,
+        notes: "Cycle count correction",
+      },
       storekeeper,
       "127.0.0.1",
     );
@@ -317,7 +388,12 @@ describe("stock services", () => {
 
     await expect(
       adjustStock(
-        { branchId, productId, quantity: -4 },
+        {
+          branchId,
+          productId,
+          quantity: -4,
+          notes: "Damaged items",
+        },
         storekeeper,
         "127.0.0.1",
       ),
