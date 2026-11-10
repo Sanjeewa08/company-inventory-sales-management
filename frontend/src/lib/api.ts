@@ -1,4 +1,4 @@
-import axios from "axios";
+﻿import axios from "axios";
 import { toast } from "sonner";
 import { clearAccessToken, getAccessToken } from "./authToken";
 
@@ -12,7 +12,7 @@ interface ApiErrorBody {
 
 const apiBaseUrl =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, "") ??
-  "http://localhost:3000";
+  "/api";
 
 export const apiClient = axios.create({
   baseURL: apiBaseUrl,
@@ -60,3 +60,5 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+
