@@ -6,6 +6,11 @@ import { Prisma } from "../src/generated/prisma/client";
 import { prisma } from "../src/prisma/client";
 import { writeAuditLog } from "../src/modules/audit/audit.service";
 import { createUserSchema } from "../src/modules/users/users.schema";
+import {
+  addSensitiveValue,
+  collectSensitiveValues,
+  getUnexpectedErrorDiagnostic,
+} from "./initial-admin-diagnostics";
 
 const initialAdminLockKey = 202_611_091;
 
@@ -109,7 +114,7 @@ async function promptForAdmin() {
   return result.data;
 }
 
-async function createInitialAdmin() {
+async function createInitialAdmin(sensitiveValues: Set<string>) {
   if (process.env.NODE_ENV !== "production") {
     throw new InitialAdminSetupError(
       "Initial admin creation is available only in production mode.",
@@ -133,10 +138,12 @@ async function createInitialAdmin() {
   }
 
   const input = await promptForAdmin();
+  addSensitiveValue(sensitiveValues, input.password);
   const passwordHash = await bcrypt.hash(input.password, 12);
+  addSensitiveValue(sensitiveValues, passwordHash);
 
   await prisma.$transaction(async (transaction) => {
-    await transaction.$queryRaw`
+    await transaction.$executeRaw`
       SELECT pg_advisory_xact_lock(${initialAdminLockKey})
     `;
 
@@ -192,8 +199,18 @@ async function createInitialAdmin() {
 }
 
 async function main() {
+  const sensitiveValues = collectSensitiveValues(
+    Object.entries(process.env)
+      .filter(([name]) =>
+        /(?:DATABASE_URL|DATABASE_URI|DB_URL|CONNECTION_STRING|PASSWORD|PASSWD|PWD|SECRET|TOKEN|API_KEY|PRIVATE_KEY|CREDENTIAL|AUTHORIZATION)/i.test(
+          name,
+        ),
+      )
+      .map(([, value]) => value),
+  );
+
   try {
-    await createInitialAdmin();
+    await createInitialAdmin(sensitiveValues);
     console.info("Initial ADMIN account created successfully.");
   } catch (error) {
     if (error instanceof InitialAdminSetupError) {
@@ -214,7 +231,8 @@ async function main() {
       );
     } else {
       console.error(
-        "Initial ADMIN creation failed. Verify database connectivity and migration status; error details are suppressed.",
+        "Unexpected initial ADMIN creation error:",
+        JSON.stringify(getUnexpectedErrorDiagnostic(error, sensitiveValues)),
       );
     }
     process.exitCode = 1;
