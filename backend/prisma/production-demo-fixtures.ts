@@ -1,0 +1,303 @@
+export const productionDemoVersion = "production-demo-v1";
+
+export const demoBranches = [
+  {
+    key: "central",
+    name: "DEMO - Asterion Central Depot",
+    address: "Fictional Central District, Colombo",
+  },
+  {
+    key: "lakeside",
+    name: "DEMO - Asterion Lakeside Branch",
+    address: "Fictional Lakeside District, Kandy",
+  },
+] as const;
+
+export const demoCategories = [
+  {
+    key: "DRY",
+    name: "DEMO - Dry Goods",
+    description: "Fictional packaged food and pantry items.",
+  },
+  {
+    key: "OFF",
+    name: "DEMO - Office Supplies",
+    description: "Fictional stationery and workplace consumables.",
+  },
+  {
+    key: "CLN",
+    name: "DEMO - Cleaning and Facility",
+    description: "Fictional cleaning and facility supplies.",
+  },
+  {
+    key: "SAF",
+    name: "DEMO - Safety Equipment",
+    description: "Fictional workplace safety products.",
+  },
+  {
+    key: "APP",
+    name: "DEMO - Small Appliances",
+    description: "Fictional small workplace appliances.",
+  },
+] as const;
+
+export const demoSuppliers = [
+  {
+    name: "DEMO - Asterion Wholesale Foods",
+    email: "orders@asterion-foods-demo.example",
+    address: "Fictional Wholesale Quarter, Colombo",
+  },
+  {
+    name: "DEMO - Brightline Office Goods",
+    email: "orders@brightline-office-demo.example",
+    address: "Fictional Commerce Park, Kandy",
+  },
+  {
+    name: "DEMO - Evergreen Facility Supply",
+    email: "orders@evergreen-facility-demo.example",
+    address: "Fictional Trade Zone, Galle",
+  },
+  {
+    name: "DEMO - Summit Safety Traders",
+    email: "orders@summit-safety-demo.example",
+    address: "Fictional Industrial Estate, Kurunegala",
+  },
+  {
+    name: "DEMO - Nova Appliance Distribution",
+    email: "orders@nova-appliance-demo.example",
+    address: "Fictional Distribution Park, Negombo",
+  },
+] as const;
+
+export const demoCustomers = [
+  {
+    name: "DEMO - Meridian Guesthouse Group",
+    email: "procurement@meridian-demo.example",
+    address: "Fictional Central District, Colombo",
+  },
+  {
+    name: "DEMO - Northwind Learning Centre",
+    email: "office@northwind-learning-demo.example",
+    address: "Fictional Lakeside District, Kandy",
+  },
+  {
+    name: "DEMO - Juniper Works Cooperative",
+    email: "purchasing@juniper-works-demo.example",
+    address: "Fictional Garden Quarter, Galle",
+  },
+  {
+    name: "DEMO - Copperleaf Design Studio",
+    email: "accounts@copperleaf-demo.example",
+    address: "Fictional Arts District, Colombo",
+  },
+  {
+    name: "DEMO - Bluehaven Retreat Services",
+    email: "finance@bluehaven-demo.example",
+    address: "Fictional Bay Quarter, Negombo",
+  },
+  {
+    name: "DEMO - Cedarstone Property Care",
+    email: "orders@cedarstone-demo.example",
+    address: "Fictional Business Quarter, Matara",
+  },
+  {
+    name: "DEMO - Lantern Hill Events",
+    email: "admin@lanternhill-demo.example",
+    address: "Fictional Hill District, Nuwara Eliya",
+  },
+  {
+    name: "DEMO - Orchard Lane Kitchens",
+    email: "supply@orchardlane-demo.example",
+    address: "Fictional Market Quarter, Kurunegala",
+  },
+  {
+    name: "DEMO - Riverbend Community Hub",
+    email: "office@riverbend-hub-demo.example",
+    address: "Fictional Riverside District, Ratnapura",
+  },
+  {
+    name: "DEMO - Silverfern Business Lodge",
+    email: "accounts@silverfern-lodge-demo.example",
+    address: "Fictional Business Park, Badulla",
+  },
+] as const;
+
+export const demoProducts = [
+  {
+    sku: "DEMO-DRY-001",
+    categoryKey: "DRY",
+    name: "Long-Grain Rice 5 kg",
+    unit: "bag",
+    costPrice: "1650.00",
+    sellingPrice: "2200.00",
+    reorderLevel: 10,
+  },
+  {
+    sku: "DEMO-DRY-002",
+    categoryKey: "DRY",
+    name: "Red Lentils 1 kg",
+    unit: "pack",
+    costPrice: "480.00",
+    sellingPrice: "650.00",
+    reorderLevel: 12,
+  },
+  {
+    sku: "DEMO-DRY-003",
+    categoryKey: "DRY",
+    name: "Ceylon Black Tea 500 g",
+    unit: "pack",
+    costPrice: "720.00",
+    sellingPrice: "980.00",
+    reorderLevel: 8,
+  },
+  {
+    sku: "DEMO-DRY-004",
+    categoryKey: "DRY",
+    name: "Coconut Milk 400 ml",
+    unit: "can",
+    costPrice: "250.00",
+    sellingPrice: "360.00",
+    reorderLevel: 10,
+  },
+  {
+    sku: "DEMO-OFF-001",
+    categoryKey: "OFF",
+    name: "A4 Copy Paper 500 Sheets",
+    unit: "ream",
+    costPrice: "1250.00",
+    sellingPrice: "1650.00",
+    reorderLevel: 10,
+  },
+  {
+    sku: "DEMO-OFF-002",
+    categoryKey: "OFF",
+    name: "Ballpoint Pens Pack of 10",
+    unit: "pack",
+    costPrice: "280.00",
+    sellingPrice: "450.00",
+    reorderLevel: 10,
+  },
+  {
+    sku: "DEMO-OFF-003",
+    categoryKey: "OFF",
+    name: "Thermal Receipt Rolls 10-Pack",
+    unit: "pack",
+    costPrice: "620.00",
+    sellingPrice: "890.00",
+    reorderLevel: 6,
+  },
+  {
+    sku: "DEMO-OFF-004",
+    categoryKey: "OFF",
+    name: "A5 Hardcover Notebook",
+    unit: "unit",
+    costPrice: "340.00",
+    sellingPrice: "520.00",
+    reorderLevel: 8,
+  },
+  {
+    sku: "DEMO-CLN-001",
+    categoryKey: "CLN",
+    name: "Multi-Surface Cleaner 1 L",
+    unit: "bottle",
+    costPrice: "540.00",
+    sellingPrice: "790.00",
+    reorderLevel: 8,
+  },
+  {
+    sku: "DEMO-CLN-002",
+    categoryKey: "CLN",
+    name: "Microfiber Cloth Set of 3",
+    unit: "set",
+    costPrice: "450.00",
+    sellingPrice: "680.00",
+    reorderLevel: 8,
+  },
+  {
+    sku: "DEMO-CLN-003",
+    categoryKey: "CLN",
+    name: "Heavy-Duty Bin Bags 30-Pack",
+    unit: "pack",
+    costPrice: "390.00",
+    sellingPrice: "590.00",
+    reorderLevel: 8,
+  },
+  {
+    sku: "DEMO-CLN-004",
+    categoryKey: "CLN",
+    name: "Hand Soap Refill 1 L",
+    unit: "pouch",
+    costPrice: "620.00",
+    sellingPrice: "890.00",
+    reorderLevel: 6,
+  },
+  {
+    sku: "DEMO-SAF-001",
+    categoryKey: "SAF",
+    name: "Nitrile Work Gloves 100-Pack",
+    unit: "box",
+    costPrice: "960.00",
+    sellingPrice: "1350.00",
+    reorderLevel: 6,
+  },
+  {
+    sku: "DEMO-SAF-002",
+    categoryKey: "SAF",
+    name: "Clear Safety Goggles",
+    unit: "unit",
+    costPrice: "780.00",
+    sellingPrice: "1150.00",
+    reorderLevel: 6,
+  },
+  {
+    sku: "DEMO-SAF-003",
+    categoryKey: "SAF",
+    name: "High-Visibility Vest",
+    unit: "unit",
+    costPrice: "1150.00",
+    sellingPrice: "1590.00",
+    reorderLevel: 6,
+  },
+  {
+    sku: "DEMO-APP-001",
+    categoryKey: "APP",
+    name: "Stainless Electric Kettle",
+    unit: "unit",
+    costPrice: "5000.00",
+    sellingPrice: "6900.00",
+    reorderLevel: 4,
+  },
+  {
+    sku: "DEMO-APP-002",
+    categoryKey: "APP",
+    name: "Compact Desk Fan",
+    unit: "unit",
+    costPrice: "7200.00",
+    sellingPrice: "9500.00",
+    reorderLevel: 4,
+  },
+  {
+    sku: "DEMO-APP-003",
+    categoryKey: "APP",
+    name: "Surge-Protected Extension Strip",
+    unit: "unit",
+    costPrice: "2600.00",
+    sellingPrice: "3790.00",
+    reorderLevel: 5,
+  },
+] as const;
+
+export const productionDemoRecordCounts = {
+  branches: 2,
+  categories: 5,
+  suppliers: 5,
+  customers: 10,
+  products: 18,
+  stockRows: 36,
+  purchaseOrders: 3,
+  goodsReceipts: 2,
+  quotations: 3,
+  invoices: 5,
+  payments: 2,
+  activeLowStockAlerts: 2,
+} as const;

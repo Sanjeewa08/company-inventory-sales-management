@@ -29,14 +29,14 @@ shell commands, tickets, or logs.
 
 ## Repository deployment files
 
-- `backend/Dockerfile` has a non-root runtime image, a health check, and a distinct
-  `migrate` build target plus a separate interactive initial-admin target. Client
+- `backend/Dockerfile` has a non-root runtime image, a health check, and distinct
+  `migrate`, interactive initial-admin, and production demo-data build targets. Client
   generation happens at image build time without using production credentials or
   connecting to a database.
 - `backend/.dockerignore` excludes local environment files, dependencies, tests, and
   generated Prisma source from the build context.
 - `docker-compose.production.yml` runs only the API by default, with separate
-  manually-invoked migration and initial-admin profiles. API port 3000 is published
+  manually-invoked migration, initial-admin, and production demo-data profiles. API port 3000 is published
   only on VM loopback for Nginx.
 - `deploy/backend.env.example` is a placeholder template, not a usable credential
   file. Copy it to the ignored root `.env.production` and replace the placeholders
@@ -59,13 +59,13 @@ nano .env.production
 
 Set these values in the private file:
 
-| Variable | Required value |
-| --- | --- |
-| `DATABASE_URL` | PostgreSQL URL for `app_user` and `company_inventory` at `172.16.0.4:5433`; URL-encode special characters in the password. Add SSL parameters only if the existing PostgreSQL server is configured for TLS. |
-| `JWT_SECRET` | A randomly generated secret with at least 32 characters. Generate one with `openssl rand -hex 32`; store it only in the ignored environment file or a secret manager. |
-| `CORS_ORIGIN` | Exact Vercel production origin, for example `https://your-frontend.vercel.app`. Multiple exact origins may be comma-separated. |
-| `TRUST_PROXY_HOPS` | `1` when requests can reach the API only through this single Nginx proxy. Do not increase it without verifying the actual proxy chain. |
-| `NODE_ENV` / `PORT` | Keep `production` and `3000`. |
+| Variable            | Required value                                                                                                                                                                                              |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`      | PostgreSQL URL for `app_user` and `company_inventory` at `172.16.0.4:5433`; URL-encode special characters in the password. Add SSL parameters only if the existing PostgreSQL server is configured for TLS. |
+| `JWT_SECRET`        | A randomly generated secret with at least 32 characters. Generate one with `openssl rand -hex 32`; store it only in the ignored environment file or a secret manager.                                       |
+| `CORS_ORIGIN`       | Exact Vercel production origin, for example `https://your-frontend.vercel.app`. Multiple exact origins may be comma-separated.                                                                              |
+| `TRUST_PROXY_HOPS`  | `1` when requests can reach the API only through this single Nginx proxy. Do not increase it without verifying the actual proxy chain.                                                                      |
+| `NODE_ENV` / `PORT` | Keep `production` and `3000`.                                                                                                                                                                               |
 
 The database URL template contains the known database username, database name, private
 address, and port, but its password is intentionally a placeholder. Do not put an
@@ -237,4 +237,44 @@ authentication.
   Nginx. Keep the host-published API port loopback-only and review the proxy chain
   before changing this value.
 - The sample env file is for configuration shape only; it has no usable password or
-  JWT secret. Production seed commands are intentionally excluded.
+  JWT secret. The development seed is never used in production.
+
+## 9. Optional production demonstration data
+
+The separate `seed-demo` profile creates the fictional, interconnected
+`production-demo-v1` dataset. The planned additions are 2 branches, 5 categories,
+5 suppliers, 10 customers, 18 products, 36 branch/product stock rows, 48 stock
+movements, 3 purchase orders (one approved, one partially received, one received),
+2 goods receipts, 3 quotations (draft, sent, converted), 5 invoices (3 pending,
+1 partial, 1 paid), 2 payment records, 2 active low-stock alerts, and 103 audit
+entries. It also allocates 13 document numbers through the existing
+`DocumentSequence` rows. All company, supplier, and customer details are fictional;
+email addresses use the reserved `.example` domain. No users are created, and no
+ADMIN account or credential is changed.
+
+The seeder requires production mode and an existing active ADMIN. It takes a
+transaction-scoped advisory lock, checks for pre-existing reserved demo identifiers
+and document-number collisions, inserts the dataset atomically, and records a
+version marker. It creates no duplicates when rerun after success. It never deletes
+or overwrites existing business records; if it detects a collision or any
+verification fails, the transaction rolls back. Document sequence counters may
+advance as normal when new purchase orders, receipts, quotations, and invoices are
+created.
+
+First build and run the read-only preview. It reports planned counts and available
+document numbers; it does not allocate sequence numbers or write database rows:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml --profile demo-data run --build --rm seed-demo npm run db:seed:production-demo -- --dry-run
+```
+
+Review the preview and ensure the displayed plan matches the intended changes before
+running the approved production insert:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml --profile demo-data run --build --rm seed-demo
+```
+
+The command is intentionally separate from API startup and from the development
+`prisma/seed.ts` script. A completed version is marked in the audit log; a repeated
+run reports `already-seeded` and adds nothing. No migration is required.

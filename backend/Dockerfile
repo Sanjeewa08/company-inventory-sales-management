@@ -24,6 +24,11 @@ FROM operations AS create-initial-admin
 ENV NODE_ENV=production
 CMD ["npm", "run", "admin:create-initial"]
 
+FROM operations AS seed-production-demo
+
+ENV NODE_ENV=production
+CMD ["npm", "run", "db:seed:production-demo"]
+
 FROM operations AS build
 
 COPY tsconfig.json tsconfig.build.json ./

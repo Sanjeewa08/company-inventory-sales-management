@@ -55,6 +55,12 @@ interactive `create-admin` profile documented in
 without echoing it and refuses to create another ADMIN. The production bootstrap is
 separate from the demo seed.
 
+Production demonstration data uses a separate, production-only seeder. It is an
+explicit operation, creates fictional `DEMO-` records without deleting or updating
+existing business records, and becomes a no-op after its first successful run. Review
+the preview and approved-run steps in
+[DEPLOYMENT.md](DEPLOYMENT.md#9-optional-production-demonstration-data).
+
 ## Included
 
 - Express and strict TypeScript backend skeleton
@@ -73,7 +79,7 @@ separate from the demo seed.
 - Product and category management pages with search, filtering, pagination, forms, and role-gated mutations
 - Stock management with branch/category/status filters, reason-required adjustments, and immediate inter-branch transfers
 - Prisma 7 PostgreSQL schema, initial migration, and non-negative stock constraint
-- Idempotent demo seed with branches, users, products, stock, purchase orders, and invoices
+- Development-only seed with local demo users and records; production demo records use a separate seeder
 - Jest and Supertest test setup, ESLint, and Prettier
 - PostgreSQL-only Docker Compose service
 
@@ -228,4 +234,3 @@ file, Nginx bootstrap/TLS templates, and Vercel SPA routing. See
 [DEPLOYMENT.md](DEPLOYMENT.md) for environment setup, migration gates, HTTPS, Vercel
 configuration, and verification. No cloud, firewall, DNS, Nginx, container, or database
 deployment commands are run by the development workflow.
-
