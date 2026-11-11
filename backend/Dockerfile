@@ -1,24 +1,33 @@
 FROM node:22-bookworm-slim AS dependencies
 
 WORKDIR /app
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl \
+    && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
 RUN npm ci
 
-FROM dependencies AS build
+FROM dependencies AS operations
 
 COPY prisma ./prisma
 COPY prisma.config.ts ./
-COPY tsconfig.json tsconfig.build.json ./
 COPY src ./src
 RUN DATABASE_URL="postgresql://127.0.0.1:5432/build?schema=public" npm run prisma:generate
-RUN npm run build
 
-FROM dependencies AS migrate
+FROM operations AS migrate
 
-COPY prisma ./prisma
-COPY prisma.config.ts ./
 ENV NODE_ENV=production
 CMD ["./node_modules/.bin/prisma", "migrate", "deploy"]
+
+FROM operations AS create-initial-admin
+
+ENV NODE_ENV=production
+CMD ["npm", "run", "admin:create-initial"]
+
+FROM operations AS build
+
+COPY tsconfig.json tsconfig.build.json ./
+RUN npm run build
 
 FROM node:22-bookworm-slim AS production-dependencies
 

@@ -44,6 +44,23 @@ services:
     networks:
       - api_bridge
 
+  create-admin:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: create-initial-admin
+    image: company-inventory-admin-setup:release
+    profiles:
+      - admin
+    stdin_open: true
+    tty: true
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env.production}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env.production}
+    networks:
+      - api_bridge
+
 networks:
   api_bridge:
     driver: bridge

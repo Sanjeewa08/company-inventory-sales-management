@@ -30,12 +30,14 @@ shell commands, tickets, or logs.
 ## Repository deployment files
 
 - `backend/Dockerfile` has a non-root runtime image, a health check, and a distinct
-  `migrate` build target. Client generation happens at image build time without using
-  production credentials or connecting to a database.
+  `migrate` build target plus a separate interactive initial-admin target. Client
+  generation happens at image build time without using production credentials or
+  connecting to a database.
 - `backend/.dockerignore` excludes local environment files, dependencies, tests, and
   generated Prisma source from the build context.
-- `docker-compose.production.yml` runs only the API and a manually-invoked migration
-  profile. API port 3000 is published only on VM loopback for Nginx.
+- `docker-compose.production.yml` runs only the API by default, with separate
+  manually-invoked migration and initial-admin profiles. API port 3000 is published
+  only on VM loopback for Nginx.
 - `deploy/backend.env.example` is a placeholder template, not a usable credential
   file. Copy it to the ignored root `.env.production` and replace the placeholders
   privately.
@@ -117,7 +119,29 @@ Migrations are deliberately not run automatically during API startup, so scaled 
 restarting API containers cannot race to migrate. Do not run `prisma db push`, `migrate
 reset`, or the demo seed against production.
 
-## 4. Start or update the API (approval required)
+## 4. Create the initial ADMIN account
+
+Only after migrations have completed successfully, create the first administrator
+through the production-only interactive CLI:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.production.yml --profile admin run --build --rm create-admin
+```
+
+The CLI asks for the administrator's name and email, then prompts twice for a password
+without echoing it. Use a unique password of at least eight characters and store it in
+your password manager. Credentials are not supplied as command-line arguments,
+environment variables, or file contents. The CLI hashes the password using the
+application's bcrypt cost (12), creates an `ADMIN` with no branch, and writes a safe
+`CREATE` audit entry without password data. A transaction-scoped PostgreSQL advisory
+lock prevents concurrent bootstrap attempts. It refuses to run outside
+`NODE_ENV=production` or if any ADMIN already exists, including an inactive one.
+
+This command creates a user row, so review and approve it before running. It does not
+run the demo seed or change any other account. Once an ADMIN exists, use the normal
+authenticated user-management API to create further accounts.
+
+## 5. Start or update the API (approval required)
 
 After migration approval/completion and review of the environment/network settings:
 
@@ -133,7 +157,7 @@ not include or alter PostgreSQL. Do not scale multiple API replicas with this Co
 configuration: the current daily low-stock reconciliation is scheduled by each API
 process, and the login rate limiter is process-local.
 
-## 5. Configure Nginx and HTTPS on the existing VM (approval required)
+## 6. Configure Nginx and HTTPS on the existing VM (approval required)
 
 Before changing Nginx, inspect existing sites and confirm ports 80 and 443 are available.
 Point the chosen API DNS name to the existing VM's public address. In the two Nginx
@@ -178,7 +202,7 @@ Verify certificate renewal is configured and that `https://api.your-domain.examp
 returns the expected health response. The health endpoint currently checks process
 responsiveness, not PostgreSQL readiness.
 
-## 6. Deploy the frontend to Vercel
+## 7. Deploy the frontend to Vercel
 
 Create or update the Vercel project using:
 
@@ -198,7 +222,7 @@ deployments need API access, add only the exact preview origins intended for use
 backend does not support wildcard origin patterns. CORS is browser policy, not API
 authentication.
 
-## 7. Security and operational checks
+## 8. Security and operational checks
 
 - Keep PostgreSQL reachable only through its private interface. A Docker port binding
   is not a substitute for Azure network rules; verify public inbound 5433 is denied.

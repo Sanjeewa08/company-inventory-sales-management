@@ -49,6 +49,11 @@ service, follow [DEPLOYMENT.md](DEPLOYMENT.md). The production Compose file runs
 the API, binds it to loopback for the Nginx HTTPS proxy, and does not create, replace,
 or manage the PostgreSQL container or volume. Production migrations are a separate,
 explicit step; do not run the development seed or use sample database credentials.
+After applying migrations, create the first production administrator using the
+interactive `create-admin` profile documented in
+[DEPLOYMENT.md](DEPLOYMENT.md#4-create-the-initial-admin). It requests the password
+without echoing it and refuses to create another ADMIN. The production bootstrap is
+separate from the demo seed.
 
 ## Included
 
